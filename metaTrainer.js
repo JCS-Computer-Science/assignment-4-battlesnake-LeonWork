@@ -1,9 +1,17 @@
 import fs from "fs";
 import { execSync } from "child_process";
 
+const fallbackMetaConfig = {
+  foodWeight: 9.24,
+  aggressionWeight: 3.9,
+  tailPriorityWeight: 3.36,
+  trapAvoidanceWeight: 27.42,
+  spaceThreshold: 19
+};
+
 if (!fs.existsSync("meta_config.json")) {
-  console.error("Error: meta_config.json is missing.");
-  process.exit(1);
+  console.warn("⚠️ meta_config.json is missing, creating default baseline config.");
+  fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
 }
 
 const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
@@ -19,65 +27,70 @@ function mutate(config) {
   };
 }
 
-function runMatch(config) {
-  fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
-  try {
-    execSync("node simulateMatch.js", { stdio: "ignore" });
-    const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-    return results;
-  } catch (error) {
-    console.error("Simulation failed:", error.message);
-    return [];
-  }
+function averageScoreFromLog() {
+  if (!fs.existsSync("batch_results.json")) return -9999;
+  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
+  const totalScore = results.reduce((sum, m) => sum + m.score, 0);
+  return Math.round(totalScore);
 }
 
-function scoreResults(results) {
-  const survival = results.filter(r => r.survived).length;
-  const starvation = results.filter(r => r.reason === "starved").length;
-  const kills = results.reduce((sum, r) => sum + r.kills, 0);
-  const wins = results.filter(r => r.win).length;
-  const score = results.reduce((sum, r) => sum + r.score, 0);
-  return {
-    score,
-    survivalRate: survival,
-    starvationRate: starvation,
-    avgKills: (kills / results.length).toFixed(2),
-    winRate: wins,
-  };
+function average(results, key) {
+  return parseFloat((results.reduce((sum, r) => sum + (r[key] || 0), 0) / results.length).toFixed(2));
+}
+
+function averageWinRate(results) {
+  return results.filter(r => r.win).length / results.length * 100;
+}
+
+function runTrial(config) {
+  fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
+  try {
+    execSync("npm run simulate-match", { stdio: "ignore" });
+  } catch (error) {
+    return { score: -9999, results: [] };
+  }
+  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
+  return { score: averageScoreFromLog(), results };
 }
 
 function autoCommit() {
   try {
-    execSync(`git add .`);
-    execSync(`git commit --allow-empty -m "🤖 Auto-trained new meta config"`);
-    execSync(`git push`);
-    console.log("✅ Auto-committed and pushed new config.");
+    execSync("git config --global user.name 'github-actions'");
+    execSync("git config --global user.email 'bot@github.com'");
+    execSync("git add config_best.json training_log.csv");
+    execSync("git commit -m '🤖 Auto-trained new meta config'");
+    execSync("git push");
   } catch (e) {
-    console.error("❌ Auto-commit failed:", e.message);
+    console.warn("⚠️ Auto-commit skipped or failed:", e.message);
   }
 }
 
 function train(gens = 30) {
   let best = baseConfig;
   let bestScore = -Infinity;
+  const logLines = [];
 
-  for (let i = 0; i <= gens; i++) {
-    const trial = i === 0 ? baseConfig : mutate(best);
-    const results = runMatch(trial);
-    const { score, survivalRate, starvationRate, avgKills, winRate } = scoreResults(results);
+  for (let i = 0; i < gens; i++) {
+    const trial = mutate(best);
+    const { score, results } = runTrial(trial);
+    const survival = average(results, "survived") * 100;
+    const starvation = average(results, "starved") * 100;
+    const kills = average(results, "kills");
+    const winRate = averageWinRate(results);
 
-    console.log(`🎯 Gen ${i}: WinRate ${winRate} | Score ${score} | Survival ${survivalRate}.0%`);
+    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}%`);
 
-    fs.appendFileSync("training_log.csv", `${i},${score},${survivalRate},${starvationRate},${avgKills},${winRate},${JSON.stringify(trial)}\n`);
+    logLines.push(`${i},${score},${survival},${starvation},${kills},${winRate.toFixed(0)},${JSON.stringify(trial)}`);
 
     if (score > bestScore) {
       bestScore = score;
       best = trial;
-      fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
+      fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
     }
   }
 
+  fs.appendFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n` + logLines.join("\n") + "\n");
   autoCommit();
 }
 
-train(30);
+train();
