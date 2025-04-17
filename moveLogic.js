@@ -1,310 +1,445 @@
-//npx ngrok http 8000
-// node simulateMatch.js
-// node trainer.js
-// import fs from "fs";
-// const config = JSON.parse(fs.readFileSync(new URL("./config_best.json", import.meta.url)));
-const config = {
-  "foodWeight": 10.4,
-  "aggressionWeight": 4.23,
-  "tailPriorityWeight": 3.52,
-  "trapAvoidanceWeight": 39.1,
-  "spaceThreshold": 19
-}
-
-
-function move(gameState) {
-  const moves = ["up", "down", "left", "right"];
-  const head = gameState.you.body[0];
-  const neck = gameState.you.body[1];
-  const width = gameState.board.width;
-  const height = gameState.board.height;
-  const center = { x: Math.floor(width / 2), y: Math.floor(height / 2) };
-  const myLength = gameState.you.body.length;
-  const health = gameState.you.health;
-  const turn = gameState.turn;
-
-  const allSnakes = gameState.board.snakes;
-  const aliveSnakes = allSnakes.length;
-  const largerSnakes = allSnakes.filter(s => s.body.length > myLength);
-  const smallerSnakes = allSnakes.filter(s => s.body.length < myLength);
-
-  const IAmBiggest = largerSnakes.length === 0;
-  const IAmSmallest = smallerSnakes.length === 0;
-  const endGame = aliveSnakes <= 2;
-
-  let mode = "balanced";
-  if (IAmBiggest && endGame) mode = "hunter";
-  else if (IAmSmallest) mode = "survivor";
-  else if (IAmBiggest) mode = "aggressor";
-  else if (endGame) mode = "conservative";
-
-  let moveSafety = { up: true, down: true, left: true, right: true };
-  moveSafety.left = neck.x < head.x ? false : moveSafety.left;
-  moveSafety.right = neck.x > head.x ? false : moveSafety.right;
-  moveSafety.down = neck.y < head.y ? false : moveSafety.down;
-  moveSafety.up = neck.y > head.y ? false : moveSafety.up;
-
-  if (head.x === 0) moveSafety.left = false;
-  if (head.x === width - 1) moveSafety.right = false;
-  if (head.y === 0) moveSafety.down = false;
-  if (head.y === height - 1) moveSafety.up = false;
-
-  for (const part of gameState.you.body) blockIf(head, part, moveSafety);
-
-  for (const snake of gameState.board.snakes) {
-    for (const part of snake.body) blockIf(head, part, moveSafety);
-    const eHead = snake.body[0];
-    if (snake.body.length >= myLength) {
-      if (head.x + 1 === eHead.x && head.y === eHead.y) moveSafety.right = false;
-      if (head.x - 1 === eHead.x && head.y === eHead.y) moveSafety.left = false;
-      if (head.x === eHead.x && head.y + 1 === eHead.y) moveSafety.up = false;
-      if (head.x === eHead.x && head.y - 1 === eHead.y) moveSafety.down = false;
-    }
+export default function move(gameState){
+  gameState.board.snakes.forEach(snake => console.log(snake.name));
+  let moveSafety = {
+      up: true,
+      down: true,
+      left: true,
+      right: true
+  };
+  let priorityMoves = {
+      up: false,
+      down: false,
+      left: false,
+      right: false
   }
+  let riskyMoves = {
+      up: false,
+      down: false,
+      left: false,
+      right: false
+  };
+  let sS = { up: 0, down: 0, left: 0, right: 0 }  
+  
+  let myHead = gameState.you.body[0];
+  let myNeck = gameState.you.body[1];
 
-  const safeMoves = Object.keys(moveSafety).filter(m => moveSafety[m]);
-  const scores = {};
-  const targetSnake = getWeakestSnake(gameState);
-  const targetHead = targetSnake ? targetSnake.body[0] : null;
-  const tail = gameState.you.body[gameState.you.body.length - 1];
-  const needFood = health < 30;
-  const zoneControl = getMyZoneScore(gameState);
-  const nearTail = dist(head, tail) < 5;
-  const foodTargets = gameState.board.food;
-  const enemyHeads = gameState.board.snakes.filter(s => s.id !== gameState.you.id).map(s => s.body[0]);
-  const heatMap = {};
 
-  for (const move of safeMoves) {
-    const next = moveTo(head, move);
-    let score = floodFill(next, gameState, 60);
 
-    for (const enemyHead of enemyHeads) {
-      const predictedEnemyMoves = [
-        { x: enemyHead.x + 1, y: enemyHead.y },
-        { x: enemyHead.x - 1, y: enemyHead.y },
-        { x: enemyHead.x, y: enemyHead.y + 1 },
-        { x: enemyHead.x, y: enemyHead.y - 1 }
-      ];
-      for (const enemyMove of predictedEnemyMoves) {
-        if (next.x === enemyMove.x && next.y === enemyMove.y) {
-          score -= 1000;
-        }
-      }
-    }
-
-    const futureSpace = floodFill(next, gameState, 40);
-    if (futureSpace < config.spaceThreshold) score -= config.trapAvoidanceWeight;
-    if (myLength > 10 && futureSpace < myLength / 2) score -= 50;
-    if (futureSpace < 15 && dist(next, tail) < 5) score += config.tailPriorityWeight;
-
-    if (turn > 2 && foodTargets.length) {
-      const food = getSafeFood(head, gameState, myLength);
-      if (food) {
-        const foodDistance = dist(head, food);
-        const closeEnemy = gameState.board.snakes.some(s => {
-          if (s.id === gameState.you.id) return false;
-          const eHead = s.body[0];
-          return dist(eHead, food) <= foodDistance && s.body.length >= myLength;
-        });
-        if (!closeEnemy || (needFood && turn > 10)) {
-          score += config.foodWeight * proximityBonus(move, head, food);
-        } else if (!needFood && foodDistance > 5) {
-          score -= 5;
-        }
-      }
-    }
-
-    if ((mode === "hunter" || mode === "aggressor") && targetHead) {
-      score += config.aggressionWeight * proximityBonus(move, head, targetHead);
-      const futureControl = floodFill(next, gameState, 20);
-      if (futureControl > 15) score += 5;
-      score += 3 * proximityBonus(move, head, center);
-    } else if (mode === "survivor") {
-      score += 4 * proximityBonus(move, head, tail);
-      score += 4 * proximityBonus(move, head, center);
-    } else if (mode === "conservative") {
-      score += 5 * proximityBonus(move, head, tail);
-      score += 2 * proximityBonus(move, head, center);
-    } else {
-      score += 3 * proximityBonus(move, head, center);
-      score += 2 * proximityBonus(move, head, tail);
-    }
-
-    if (zoneControl > 0.4) {
-      score += 4 * proximityBonus(move, head, center);
-    } else {
-      score += 4 * proximityBonus(move, head, tail);
-    }
-
-    const killDirs = getKillOpportunities(head, gameState);
-    if (killDirs.includes(move)) score += 999;
-
-    if (nearTail && floodFill(next, gameState, 20) < 10) {
-      score += 2;
-    }
-
-    scores[move] = score;
-    heatMap[`${next.x},${next.y}`] = score;
+  function sB(){
+      moveSafety.left  = (myNeck.x < myHead.x) ? false : moveSafety.left;
+      moveSafety.right  = (myNeck.x > myHead.x) ? false : moveSafety.right;
+      moveSafety.down  = (myNeck.y < myHead.y) ? false : moveSafety.down;
+      moveSafety.up  = (myNeck.y > myHead.y) ? false : moveSafety.up;
   }
+  sB()
+  
+  function bounds(){
+      moveSafety.left = (myHead.x == 0) ? false : moveSafety.left
+      moveSafety.right = (myHead.x == (gameState.board.width) -1) ? false : moveSafety.right
+      moveSafety.down = (myHead.y == 0) ? false : moveSafety.down
+      moveSafety.up = (myHead.y == (gameState.board.height) -1) ? false : moveSafety.up
+  }
+  bounds()
+  
+  let myBody = gameState.you.body
+  
+  function selfPreservation(){
+      let ate = 1
+      if(gameState.you.health == 100){
+          ate = 0
+      }
+      for(let i = 1; i < myBody.length - ate; i++){
+          moveSafety.right = (myHead.x + 1 == myBody[i].x  && myHead.y == myBody[i].y) ? false : moveSafety.right
+          moveSafety.left = (myHead.x  -1 == myBody[i].x && myHead.y == myBody[i].y) ? false : moveSafety.left
+          moveSafety.up = (myHead.x == myBody[i].x  && myHead.y + 1== myBody[i].y ) ? false : moveSafety.up
+          moveSafety.down = (myHead.x == myBody[i].x && myHead.y -1 == myBody[i].y) ? false : moveSafety.down
 
-  const bestMove = Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] || safeMoves[0] || "down";
+          riskyMoves.right = (myHead.x + 1 == myBody[i].x  && myHead.y == myBody[i].y) ? false : riskyMoves.right
+          riskyMoves.left = (myHead.x  -1 == myBody[i].x && myHead.y == myBody[i].y) ? false : riskyMoves.left
+          riskyMoves.up = (myHead.x == myBody[i].x  && myHead.y + 1== myBody[i].y ) ? false : riskyMoves.up
+          riskyMoves.down = (myHead.x == myBody[i].x && myHead.y -1 == myBody[i].y) ? false : riskyMoves.down
+      }
+  }
+  
+  function risk() {
+      let ate = 1
+      if(gameState.you.health == 100){
+          ate = 0
+      }
+      for(let i = 1; i < myBody.length - ate; i++){
+          riskyMoves.right = (myHead.x + 1 == myBody[i].x  && myHead.y == myBody[i].y) ? false : riskyMoves.right
+          riskyMoves.left = (myHead.x  -1 == myBody[i].x && myHead.y == myBody[i].y) ? false : riskyMoves.left
+          riskyMoves.up = (myHead.x == myBody[i].x  && myHead.y + 1== myBody[i].y ) ? false : riskyMoves.up
+          riskyMoves.down = (myHead.x == myBody[i].x && myHead.y -1 == myBody[i].y) ? false : riskyMoves.down
+      }
+  }
+  
+  selfPreservation()
+  risk()
+  
+  for (let j = 0; j < gameState.board.snakes.length; j++) {
+      let enemySnake = gameState.board.snakes[j];
+      if (enemySnake.id == gameState.you.id) continue;
+      
+      function enemyDodging(){
+          for (let i = 0; i < enemySnake.body.length; i++) {
+              let enemyBody = enemySnake.body[i];
+              moveSafety.right = (myHead.x + 1 == enemyBody.x && myHead.y == enemyBody.y) ? false : moveSafety.right
+              moveSafety.left = (myHead.x - 1 == enemyBody.x && myHead.y == enemyBody.y) ? false : moveSafety.left
+              moveSafety.up = (myHead.x == enemyBody.x && myHead.y + 1 == enemyBody.y) ? false : moveSafety.up
+              moveSafety.down = (myHead.x == enemyBody.x && myHead.y - 1 == enemyBody.y) ? false : moveSafety.down
+          }
+      }
+      enemyDodging()
+      
+      let enemyHead = enemySnake.body[0];
+      let myLength = gameState.you.body.length;
+      let enemyLength = enemySnake.body.length;
+  
+      if (enemyLength >= myLength) {
+          let enemyMoves = [
+              { x: enemyHead.x + 1, y: enemyHead.y },
+              { x: enemyHead.x - 1, y: enemyHead.y },
+              { x: enemyHead.x, y: enemyHead.y + 1 },
+              { x: enemyHead.x, y: enemyHead.y - 1 },
+          ];
+          for (let move of enemyMoves) {
+              if (myHead.x + 1 == move.x && myHead.y == move.y) {
+                  moveSafety.right = false;
+                  riskyMoves.right = true
+              }
+              if (myHead.x - 1 == move.x && myHead.y == move.y) {
+                  moveSafety.left = false;
+                  riskyMoves.left = true
+              }
+              if (myHead.x == move.x && myHead.y + 1 == move.y) {
+                  moveSafety.up = false;
+                  riskyMoves.up = true
+              }
+              if (myHead.x == move.x && myHead.y - 1 == move.y) {
+                  moveSafety.down = false;
+                  riskyMoves.down = true
+              }
+          }
+          enemyDodging()
+          selfPreservation()
+          risk()
+      }
+      
+      if(enemyLength < myLength){
+          let enemyMoves = [
+              { x: enemyHead.x + 1, y: enemyHead.y },
+              { x: enemyHead.x - 1, y: enemyHead.y },
+              { x: enemyHead.x, y: enemyHead.y + 1 },
+              { x: enemyHead.x, y: enemyHead.y - 1 },
+          ];
+          for (let move of enemyMoves) {
+              priorityMoves.right = (myHead.x + 1 == move.x && myHead.y == move.y) ? true : priorityMoves.right
+              priorityMoves.left = (myHead.x - 1 == move.x && myHead.y == move.y) ? true : priorityMoves.left
+              priorityMoves.up = (myHead.x == move.x && myHead.y + 1 == move.y) ? true : priorityMoves.up
+              priorityMoves.down = (myHead.x == move.x && myHead.y - 1 == move.y) ? true : priorityMoves.down
+          }
+          enemyDodging()
+          selfPreservation()
+      }
+  }
+  function getNextPosition(pos, dir) {
+      let newPos = { x: pos.x, y: pos.y };
+      
+      if (dir == 'up') {
+          newPos.y += 1;
+      } else if (dir == 'down') {
+          newPos.y -= 1;
+      } else if (dir == 'left') {
+          newPos.x -= 1;
+      } else if (dir == 'right') {
+          newPos.x += 1;
+      }
+      
+      return newPos;
+  }
+  function evaluateSpace() {
+      let visited = new Set();
+      Object.keys(moveSafety).forEach(dir => {
+          if (!moveSafety[dir]) {
+              sS[dir] = 0;
+              return;
+          }
+          
+          let nextPos = getNextPosition(myHead, dir);
+          let space = floodFill(nextPos, 0, new Set(visited));
+          let exits = countExits(nextPos);
+          sS[dir] = space + (exits * 5);
+      });
+  }
+  evaluateSpace()
 
-  logTurn(gameState, mode, scores, bestMove);
+  let myLength = gameState.you.body.length;
+  let myHealth = gameState.you.health;
+
+  for (let snake of gameState.board.snakes) {
+      if (snake.id == gameState.you.id) continue;
+      
+      let enemyHead = snake.body[0];
+      let enemyLength = snake.body.length;
+      
+      if (myLength > enemyLength && myHealth > 30) {
+          let distance = Math.abs(myHead.x - enemyHead.x) + Math.abs(myHead.y - enemyHead.y);
+          
+          if (distance <= 3) {
+              priorityMoves.right = enemyHead.x > myHead.x || priorityMoves.right;
+              priorityMoves.left = enemyHead.x < myHead.x || priorityMoves.left;
+              priorityMoves.up = enemyHead.y > myHead.y || priorityMoves.up;
+              priorityMoves.down = enemyHead.y < myHead.y || priorityMoves.down;
+          }
+      }
+  }
+  
+  function findBestFood(snakeHead, foodLocations, allSnakes) {
+      let bestFood = null;
+      let minDistance = 1000;
+      let amIClosest = false;
+  
+      for (let food of foodLocations) {
+          let myDistance = Math.abs(snakeHead.x - food.x) + Math.abs(snakeHead.y - food.y);
+      
+          let isClosest = true;
+          for (let snake of allSnakes) {
+              if (snake.id == gameState.you.id) continue;
+              
+              let enemyDistance = Math.abs(snake.body[0].x - food.x) + Math.abs(snake.body[0].y - food.y);
+              if (enemyDistance < myDistance) {
+                  isClosest = false;
+                  break;
+              }
+          }
+  
+          if (isClosest || (!amIClosest && myDistance < minDistance)) {
+              if (isClosest) {
+                  amIClosest = true;
+              }
+              minDistance = myDistance;
+              bestFood = food;
+          }
+      }
+  
+      return bestFood
+  }
+  
+  if (gameState.you.health < 50) {
+      let bestFood = findBestFood(myHead, gameState.board.food, gameState.board.snakes);
+      
+      priorityMoves.right = bestFood.x > myHead.x;
+      priorityMoves.left = bestFood.x < myHead.x;
+      priorityMoves.up = bestFood.y > myHead.y;
+      priorityMoves.down = bestFood.y < myHead.y;
+  }
+  
+  let safeMoves = Object.keys(moveSafety).filter(direction => moveSafety[direction]);
+  let riskyOptions = Object.keys(riskyMoves).filter(direction => riskyMoves[direction]);
+  
+  if (safeMoves.length == 0) {
+      for (let move of riskyOptions) {
+          if (futureSense(move, gameState, 5)) {
+              console.log(`Snake ID: ${gameState.you.id} Turn: ${gameState.turn} - Choosing risky but future-safe move: ${move}`);
+              return { move };
+          }
+      }
+      if (riskyOptions.length > 0) {
+          let randomRisky = riskyOptions[Math.floor(Math.random() * riskyOptions.length)];
+          console.log(`Snake ID: ${gameState.you.id} Turn: ${gameState.turn} - Choosing random risky move: ${randomRisky}`);
+          return { move: randomRisky };
+      }
+      console.log(`Snake ID: ${gameState.you.id} Turn: ${gameState.turn} - No moves left! Going up`);
+      return { move: "up" };
+  }
+  
+  let futureSafeMoves = safeMoves.filter(move => futureSense(move, gameState, 10));
+  if (futureSafeMoves.length == 0) {
+      let chosenMove = safeMoves[Math.floor(Math.random() * safeMoves.length)];
+      console.log(`Snake ID: ${gameState.you.id} Turn: ${gameState.turn} - No future-safe moves, using random safe move: ${chosenMove}`);
+      return { move: chosenMove };
+  }
+  let moveScores = {};
+  futureSafeMoves.forEach(move => {
+      moveScores[move] = 0;
+      moveScores[move] += sS[move] || 0;
+      moveScores[move] += priorityMoves[move] ? 10 : 0;
+  });
+  let bestMove = null;
+  let bestScore = 0
+
+  for (let move in moveScores) {
+      if (moveScores[move] > bestScore) {
+          bestScore = moveScores[move];
+          bestMove = move;
+      }
+  }
+  
+  console.log(`Snake ID: ${gameState.you.id} Turn: ${gameState.turn} - Choosing best scored move: ${bestMove} (score: ${moveScores[bestMove]})`);
   return { move: bestMove };
-}
-
-function moveTo(pos, dir) {
-  return {
-    x: dir === "left" ? pos.x - 1 : dir === "right" ? pos.x + 1 : pos.x,
-    y: dir === "up" ? pos.y + 1 : dir === "down" ? pos.y - 1 : pos.y
-  };
-}
-
-function blockIf(head, part, safety) {
-  if (head.x + 1 === part.x && head.y === part.y) safety.right = false;
-  if (head.x - 1 === part.x && head.y === part.y) safety.left = false;
-  if (head.x === part.x && head.y + 1 === part.y) safety.up = false;
-  if (head.x === part.x && head.y - 1 === part.y) safety.down = false;
-}
-
-function floodFill(start, gameState, limit = 100) {
-  const width = gameState.board.width;
-  const height = gameState.board.height;
-  const visited = new Set();
-  const queue = [start];
-  const blocked = {};
-  for (const snake of gameState.board.snakes) {
-    for (const part of snake.body) blocked[`${part.x},${part.y}`] = true;
-  }
-  let count = 0;
-  while (queue.length && count < limit) {
-    const curr = queue.shift();
-    const key = `${curr.x},${curr.y}`;
-    if (visited.has(key) || blocked[key]) continue;
-    if (curr.x < 0 || curr.x >= width || curr.y < 0 || curr.y >= height) continue;
-    visited.add(key);
-    count++;
-    queue.push({ x: curr.x + 1, y: curr.y });
-    queue.push({ x: curr.x - 1, y: curr.y });
-    queue.push({ x: curr.x, y: curr.y + 1 });
-    queue.push({ x: curr.x, y: curr.y - 1 });
-  }
-  return count;
-}
-
-function dist(a, b) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
-function proximityBonus(dir, from, to) {
-  const next = moveTo(from, dir);
-  return 1 / (dist(next, to) + 1);
-}
-
-function getSafeFood(myHead, gameState, myLength) {
-  let best = null;
-  let bestDist = Infinity;
-  for (const food of gameState.board.food) {
-    const myD = dist(myHead, food);
-    let safe = true;
-    for (const snake of gameState.board.snakes) {
-      if (snake.id === gameState.you.id) continue;
-      const eHead = snake.body[0];
-      const eDist = dist(eHead, food);
-      if (eDist < myD || (eDist === myD && snake.body.length >= myLength)) {
-        safe = false;
-        break;
-      }
-    }
-    if (safe && myD < bestDist) {
-      bestDist = myD;
-      best = food;
-    }
-  }
-  return best;
-}
-
-function getWeakestSnake(gameState) {
-  return gameState.board.snakes
-    .filter(s => s.id !== gameState.you.id)
-    .sort((a, b) => a.body.length - b.body.length)[0];
-}
-
-function getKillOpportunities(myHead, gameState) {
-  const killDirs = [];
-  const myLen = gameState.you.body.length;
-  for (const snake of gameState.board.snakes) {
-    if (snake.id === gameState.you.id) continue;
-    if (snake.body.length >= myLen) continue;
-    const h = snake.body[0];
-    if (myHead.x + 1 === h.x && myHead.y === h.y) killDirs.push("right");
-    if (myHead.x - 1 === h.x && myHead.y === h.y) killDirs.push("left");
-    if (myHead.x === h.x && myHead.y + 1 === h.y) killDirs.push("up");
-    if (myHead.x === h.x && myHead.y - 1 === h.y) killDirs.push("down");
-  }
-  return killDirs;
-}
-
-function getMyZoneScore(gameState) {
-  const width = gameState.board.width || 11;
-  const height = gameState.board.height || 11;
-  const board = Array.from({ length: width }, () => Array(height).fill(null));
-
-  for (const snake of gameState.board.snakes) {
-    for (const part of snake.body) {
-      if (
-        part.x >= 0 && part.x < width &&
-        part.y >= 0 && part.y < height
-      ) {
-        board[part.x][part.y] = "X";
-      }
-    }
-  }
-
-  const distances = {};
-  for (const snake of gameState.board.snakes) {
-    const id = snake.id;
-    const head = snake.body[0];
-    const queue = [{ x: head.x, y: head.y, dist: 0 }];
-    const visited = new Set();
-    while (queue.length) {
-      const { x, y, dist } = queue.shift();
-      const key = `${x},${y}`;
-      if (x < 0 || y < 0 || x >= width || y >= height) continue;
-      if (visited.has(key)) continue;
-      if (board[x][y] !== null && board[x][y] !== id) continue;
+  function floodFill(pos, depth, visited) {
+      let key = `${pos.x},${pos.y}`;
+      if (visited.has(key) || depth > 15) return 0;
+      
       visited.add(key);
-      if (!distances[key] || dist < distances[key].dist) distances[key] = { id, dist };
-      queue.push({ x: x + 1, y, dist: dist + 1 });
-      queue.push({ x: x - 1, y, dist: dist + 1 });
-      queue.push({ x, y: y + 1, dist: dist + 1 });
-      queue.push({ x, y: y - 1, dist: dist + 1 });
-    }
+      
+      if (pos.x < 0 || pos.x >= gameState.board.width || pos.y < 0 || pos.y >= gameState.board.height) {
+          return 0;
+      }
+  
+      for (let snake of gameState.board.snakes) {
+          for (let body of snake.body) {
+              if (pos.x == body.x && pos.y == body.y) {
+                  return 0;
+              }
+          }
+      }
+      
+      let totalSpace = 1;
+      let directions = ['up', 'down', 'left', 'right'];
+      
+      directions.forEach(dir => {
+          let nextPos = getNextPosition(pos, dir);
+          totalSpace += floodFill(nextPos, depth + 1, visited);
+      });
+      
+      return totalSpace;
   }
-  let myControl = 0;
-  let total = 0;
-  for (const key in distances) {
-    total++;
-    if (distances[key].id === gameState.you.id) myControl++;
+
+  function countExits(pos) {
+      let exits = 0;
+      let directions = ['up', 'down', 'left', 'right'];
+      
+      directions.forEach(dir => {
+          let nextPos = getNextPosition(pos, dir);
+          
+          if (nextPos.x < 0 || nextPos.x >= gameState.board.width || nextPos.y < 0 || nextPos.y >= gameState.board.height) {
+              return;
+          }
+          
+          let occupied = false;
+          for (let snake of gameState.board.snakes) {
+              for (let body of snake.body) {
+                  if (nextPos.x == body.x && nextPos.y == body.y) {
+                      occupied = true;
+                      break;
+                  }
+              }
+              if (occupied) break;
+          }
+          
+          if (!occupied){
+              exits++;
+          }
+      });
+      
+      return exits;
   }
-  return myControl / total;
 }
 
-function logTurn(gameState, mode, scores, bestMove) {
-  const logEntry = {
-    turn: gameState.turn,
-    mode,
-    move: bestMove,
-    health: gameState.you.health,
-    length: gameState.you.body.length,
-    zoneControl: getMyZoneScore(gameState),
-    head: gameState.you.body[0],
-    enemies: gameState.board.snakes.length,
-    scores
-  };
-  // fs.appendFileSync("match_log.jsonl", JSON.stringify(logEntry) + "\n");
-  console.log(`[Turn ${logEntry.turn}] Mode: ${logEntry.mode} | Move: ${logEntry.move} | Health: ${logEntry.health} | Length: ${logEntry.length} | Enemies: ${logEntry.enemies}`);
 
+function futureSense(move, gameState, depth) {
+  if (depth <= 0) { 
+      return true;
+  }
+
+  let newGameState = JSON.parse(JSON.stringify(gameState));
+  let mySnake = newGameState.you;
+  let myBody = mySnake.body;
+
+  let newHead = { ...myBody[0] }; 
+  if (move == "up") {
+      newHead.y += 1;
+  }
+  else if (move == "down") {
+      newHead.y -= 1;
+  }
+  else if (move == "left") {
+      newHead.x -= 1;
+  }
+  else if (move == "right") {
+      newHead.x += 1;
+  }
+
+  myBody.unshift(newHead);
+  mySnake.health -= 1;
+  if (mySnake.health != 100) {
+      myBody.pop();
+  }
+  if (newHead.x < 0 || newHead.x >= newGameState.board.width ||
+      newHead.y < 0 || newHead.y >= newGameState.board.height) {
+      return false;
+  }
+  for (let i = 1; i < myBody.length; i++) {
+      if (newHead.x == myBody[i].x && newHead.y == myBody[i].y) {
+          return false;
+      }
+  }
+
+  for (let snake of newGameState.board.snakes) {
+      if (snake.id == mySnake.id) continue;
+      
+      let enemyHead = snake.body[0];
+      let possibleEnemyMoves = [];
+      
+      let directions = [
+          { move: "up", x: enemyHead.x, y: enemyHead.y + 1 },
+          { move: "down", x: enemyHead.x, y: enemyHead.y - 1 },
+          { move: "left", x: enemyHead.x - 1, y: enemyHead.y },
+          { move: "right", x: enemyHead.x + 1, y: enemyHead.y }
+      ];
+      
+      for (let dir of directions) {
+          if (dir.x < 0 || dir.x >= newGameState.board.width ||
+              dir.y < 0 || dir.y >= newGameState.board.height) {
+              continue;
+          }
+          let hitBody = false;
+          for (let i = 0; i < snake.body.length - 1; i++) {
+              if (dir.x == snake.body[i].x && dir.y == snake.body[i].y) {
+                  hitBody = true;
+                  break;
+              }
+          }
+          if (!hitBody) {
+              possibleEnemyMoves.push(dir);
+          }
+      }
+      if (possibleEnemyMoves.length == 0) continue;
+      
+      let randomMove = possibleEnemyMoves[Math.floor(Math.random() * possibleEnemyMoves.length)];
+
+      snake.body.unshift({ x: randomMove.x, y: randomMove.y });
+      if (snake.health  != 100) {
+          snake.body.pop();
+      }
+  }
+
+  for (let snake of newGameState.board.snakes) {
+      if (snake.id == mySnake.id) continue;
+      
+      if (snake.body.length > 0) {
+          let enemyHead = snake.body[0];
+          if (newHead.x == enemyHead.x && newHead.y == enemyHead.y) {
+              if (myBody.length <= snake.body.length) {
+                  return false;
+              }
+          }
+      }
+      for (let i = 0; i < snake.body.length; i++) {
+          if (newHead.x == snake.body[i].x && newHead.y == snake.body[i].y) {
+              return false;
+          }
+      }
+  }
+
+  let nextMoves = ["up", "down", "left", "right"];
+  for (let nextMove of nextMoves) {
+      if (futureSense(nextMove, newGameState, depth - 1)) {
+          return true;
+      }
+  }
+  
+  return false;
 }
-
-export { move };
