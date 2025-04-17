@@ -1,15 +1,22 @@
 //npx ngrok http 8000
 // node simulateMatch.js
 // node trainer.js
-// import fs from "fs";
-// const config = JSON.parse(fs.readFileSync(new URL("./config_best.json", import.meta.url)));
-const config = {
-    "foodWeight": 10.4, //10.4, 
-    "aggressionWeight": 4.23, //4.23, it works with 30.23, 50.23 is a 50/50, 100.23 is a big gamble, 
-    "tailPriorityWeight": 3.52, //3.52,
-    "trapAvoidanceWeight": 39.1, //39.1, 
-    "spaceThreshold": 19 //19, 
-  }
+import fs from "fs";
+
+let config;
+try {
+  const raw = fs.readFileSync(new URL("./config_best.json", import.meta.url));
+  config = JSON.parse(raw);
+} catch (err) {
+  console.warn("⚠️ config_best.json missing or invalid. Using fallback config.");
+  config = {
+    foodWeight: 10.0,
+    aggressionWeight: 4.0,
+    tailPriorityWeight: 3.0,
+    trapAvoidanceWeight: 30.0,
+    spaceThreshold: 18
+  };
+}
   
   
   function move(gameState) {

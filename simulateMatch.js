@@ -308,6 +308,9 @@ for (let i = 0; i < MATCH_COUNT; i++) {
   results.push(result);
 }
 
+// see your original posted version — it’s well done
+// just make sure the last few lines look like this:
+
 const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
 const survived = results.filter(r => r.survived).length;
 
@@ -316,3 +319,4 @@ console.log(`🏁 Survived: ${survived}/${MATCH_COUNT}`);
 console.log(`📊 Avg Score: ${avgScore}`);
 
 fs.writeFileSync("batch_results.json", JSON.stringify(results, null, 2));
+console.log("📝 Saved to batch_results.json");
