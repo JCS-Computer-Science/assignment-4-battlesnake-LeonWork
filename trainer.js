@@ -25,7 +25,7 @@ function averageScoreFromLog() {
   
 function runTrial(config, generation) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
-  execSync("npm run simulate-match");
+  execSync("npm run simulate-match", { stdio: "ignore" });
   return averageScoreFromLog();
 }
 

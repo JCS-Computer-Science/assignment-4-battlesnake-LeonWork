@@ -1,7 +1,15 @@
-
-import fs from "fs";
-const config = JSON.parse(fs.readFileSync(new URL("./config_best.json", import.meta.url)));
-
+//npx ngrok http 8000
+// node simulateMatch.js
+// node trainer.js
+// import fs from "fs";
+// const config = JSON.parse(fs.readFileSync(new URL("./config_best.json", import.meta.url)));
+const config = {
+  "foodWeight": 10.4,
+  "aggressionWeight": 4.23,
+  "tailPriorityWeight": 3.52,
+  "trapAvoidanceWeight": 39.1,
+  "spaceThreshold": 19
+}
 
 
 function move(gameState) {
@@ -294,7 +302,9 @@ function logTurn(gameState, mode, scores, bestMove) {
     enemies: gameState.board.snakes.length,
     scores
   };
-  fs.appendFileSync("match_log.jsonl", JSON.stringify(logEntry) + "\n");
+  // fs.appendFileSync("match_log.jsonl", JSON.stringify(logEntry) + "\n");
+  console.log(`[Turn ${logEntry.turn}] Mode: ${logEntry.mode} | Move: ${logEntry.move} | Health: ${logEntry.health} | Length: ${logEntry.length} | Enemies: ${logEntry.enemies}`);
+
 }
 
 export { move };
