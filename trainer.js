@@ -1,6 +1,11 @@
 import fs from "fs";
 import { execSync } from "child_process";
 
+if (!fs.existsSync("config.json")) {
+  console.error("Error: config.json is missing.");
+  process.exit(1);
+}
+
 const baseConfig = JSON.parse(fs.readFileSync("config.json", "utf8"));
 
 function mutate(config) {
@@ -15,17 +20,26 @@ function mutate(config) {
 }
 
 function averageScoreFromLog() {
-    try {
-      const batch = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-      return batch.reduce((sum, m) => sum + m.score, 0) / batch.length;
-    } catch {
+  try {
+    if (!fs.existsSync("batch_results.json")) {
+      console.error("Error: batch_results.json is missing.");
       return -9999;
     }
+    const batch = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
+    return batch.reduce((sum, m) => sum + m.score, 0) / batch.length;
+  } catch (error) {
+    console.error("Error reading batch_results.json:", error.message);
+    return -9999;
   }
-  
+}
+
 function runTrial(config, generation) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
-  execSync("npm run simulate-match", { stdio: "ignore" });
+  try {
+    execSync("npm run simulate-match", { stdio: "ignore" });
+  } catch (error) {
+    console.error(`Error running simulation for generation ${generation}:`, error.message);
+  }
   return averageScoreFromLog();
 }
 
