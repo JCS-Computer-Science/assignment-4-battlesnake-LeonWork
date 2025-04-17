@@ -1,14 +1,15 @@
 {
   "name": "starter-snake-javascript",
   "version": "1.0.0",
+  "type": "module",
   "author": "BattlesnakeOfficial",
   "description": "An official Battlesnake template written in JavaScript. Get started at play.battlesnake.com.",
   "license": "MIT",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "simulate-match": "node simulateMatch.js"
   },
   "repository": {
     "type": "git",
