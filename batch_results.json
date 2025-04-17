@@ -1,45 +1,45 @@
 [
   {
     "match": 1,
-    "survived": false,
-    "turns": 108,
-    "reason": "starved",
-    "score": 107
-  },
-  {
-    "match": 2,
-    "survived": false,
-    "turns": 117,
-    "reason": "starved",
-    "score": 116
-  },
-  {
-    "match": 3,
-    "survived": false,
-    "turns": 119,
-    "reason": "starved",
-    "score": 118
-  },
-  {
-    "match": 4,
-    "survived": false,
-    "turns": 138,
-    "reason": "collision",
-    "score": 137
-  },
-  {
-    "match": 5,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
   },
   {
-    "match": 6,
+    "match": 2,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
+  },
+  {
+    "match": 3,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
+  },
+  {
+    "match": 4,
     "survived": false,
-    "turns": 125,
+    "turns": 107,
     "reason": "starved",
-    "score": 124
+    "score": 106
+  },
+  {
+    "match": 5,
+    "survived": false,
+    "turns": 136,
+    "reason": "starved",
+    "score": 135
+  },
+  {
+    "match": 6,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 7,
@@ -51,86 +51,86 @@
   {
     "match": 8,
     "survived": false,
-    "turns": 98,
-    "reason": "collision",
-    "score": 97
+    "turns": 114,
+    "reason": "starved",
+    "score": 113
   },
   {
     "match": 9,
-    "survived": false,
-    "turns": 129,
-    "reason": "starved",
-    "score": 128
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 10,
     "survived": false,
-    "turns": 117,
+    "turns": 149,
     "reason": "starved",
-    "score": 116
+    "score": 148
   },
   {
     "match": 11,
     "survived": false,
-    "turns": 109,
+    "turns": 104,
     "reason": "starved",
-    "score": 108
+    "score": 103
   },
   {
     "match": 12,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 125,
+    "reason": "starved",
+    "score": 124
   },
   {
     "match": 13,
     "survived": false,
-    "turns": 105,
+    "turns": 130,
     "reason": "starved",
-    "score": 104
+    "score": 129
   },
   {
     "match": 14,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 103,
+    "reason": "starved",
+    "score": 102
   },
   {
     "match": 15,
-    "survived": false,
-    "turns": 104,
-    "reason": "collision",
-    "score": 103
-  },
-  {
-    "match": 16,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
+  },
+  {
+    "match": 16,
+    "survived": false,
+    "turns": 56,
+    "reason": "collision",
+    "score": 55
   },
   {
     "match": 17,
     "survived": false,
-    "turns": 30,
-    "reason": "collision",
-    "score": 29
+    "turns": 138,
+    "reason": "starved",
+    "score": 137
   },
   {
     "match": 18,
     "survived": false,
-    "turns": 110,
+    "turns": 114,
     "reason": "starved",
-    "score": 109
+    "score": 113
   },
   {
     "match": 19,
     "survived": false,
-    "turns": 113,
+    "turns": 117,
     "reason": "starved",
-    "score": 112
+    "score": 116
   },
   {
     "match": 20,
@@ -141,10 +141,10 @@
   },
   {
     "match": 21,
-    "survived": false,
-    "turns": 122,
-    "reason": "starved",
-    "score": 121
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 22,
@@ -155,10 +155,10 @@
   },
   {
     "match": 23,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 141,
+    "reason": "starved",
+    "score": 140
   },
   {
     "match": 24,
@@ -169,31 +169,31 @@
   },
   {
     "match": 25,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 120,
+    "reason": "starved",
+    "score": 119
   },
   {
     "match": 26,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 143,
+    "reason": "starved",
+    "score": 142
   },
   {
     "match": 27,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 113,
+    "reason": "starved",
+    "score": 112
   },
   {
     "match": 28,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 109,
+    "reason": "starved",
+    "score": 108
   },
   {
     "match": 29,
@@ -205,9 +205,9 @@
   {
     "match": 30,
     "survived": false,
-    "turns": 102,
+    "turns": 117,
     "reason": "starved",
-    "score": 101
+    "score": 116
   },
   {
     "match": 31,
@@ -218,31 +218,31 @@
   },
   {
     "match": 32,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 137,
+    "reason": "starved",
+    "score": 136
   },
   {
     "match": 33,
-    "survived": false,
-    "turns": 109,
-    "reason": "starved",
-    "score": 108
-  },
-  {
-    "match": 34,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
   },
   {
-    "match": 35,
+    "match": 34,
     "survived": false,
-    "turns": 116,
+    "turns": 121,
     "reason": "starved",
-    "score": 115
+    "score": 120
+  },
+  {
+    "match": 35,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 36,
@@ -260,10 +260,10 @@
   },
   {
     "match": 38,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 122,
+    "reason": "starved",
+    "score": 121
   },
   {
     "match": 39,
@@ -281,17 +281,17 @@
   },
   {
     "match": 41,
-    "survived": false,
-    "turns": 106,
-    "reason": "starved",
-    "score": 105
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 42,
     "survived": false,
-    "turns": 141,
+    "turns": 106,
     "reason": "starved",
-    "score": 140
+    "score": 105
   },
   {
     "match": 43,
@@ -302,94 +302,94 @@
   },
   {
     "match": 44,
+    "survived": false,
+    "turns": 101,
+    "reason": "starved",
+    "score": 100
+  },
+  {
+    "match": 45,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
   },
   {
-    "match": 45,
-    "survived": false,
-    "turns": 138,
-    "reason": "starved",
-    "score": 137
+    "match": 46,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
-    "match": 46,
+    "match": 47,
+    "survived": false,
+    "turns": 149,
+    "reason": "collision",
+    "score": 148
+  },
+  {
+    "match": 48,
+    "survived": false,
+    "turns": 109,
+    "reason": "starved",
+    "score": 108
+  },
+  {
+    "match": 49,
+    "survived": false,
+    "turns": 108,
+    "reason": "starved",
+    "score": 107
+  },
+  {
+    "match": 50,
     "survived": false,
     "turns": 113,
     "reason": "starved",
     "score": 112
   },
   {
-    "match": 47,
+    "match": 51,
     "survived": false,
-    "turns": 103,
+    "turns": 132,
     "reason": "starved",
-    "score": 102
+    "score": 131
   },
   {
-    "match": 48,
+    "match": 52,
     "survived": false,
     "turns": 110,
     "reason": "starved",
     "score": 109
   },
   {
-    "match": 49,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
-  },
-  {
-    "match": 50,
-    "survived": false,
-    "turns": 107,
-    "reason": "starved",
-    "score": 106
-  },
-  {
-    "match": 51,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
-  },
-  {
-    "match": 52,
-    "survived": false,
-    "turns": 118,
-    "reason": "starved",
-    "score": 117
-  },
-  {
     "match": 53,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 146,
+    "reason": "starved",
+    "score": 145
   },
   {
     "match": 54,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 48,
+    "reason": "collision",
+    "score": 47
   },
   {
     "match": 55,
-    "survived": false,
-    "turns": 112,
-    "reason": "starved",
-    "score": 111
-  },
-  {
-    "match": 56,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
+  },
+  {
+    "match": 56,
+    "survived": false,
+    "turns": 135,
+    "reason": "starved",
+    "score": 134
   },
   {
     "match": 57,
@@ -400,17 +400,17 @@
   },
   {
     "match": 58,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 130,
+    "reason": "starved",
+    "score": 129
   },
   {
     "match": 59,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 107,
+    "reason": "starved",
+    "score": 106
   },
   {
     "match": 60,
@@ -428,24 +428,24 @@
   },
   {
     "match": 62,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 116,
+    "reason": "starved",
+    "score": 115
   },
   {
     "match": 63,
     "survived": false,
-    "turns": 124,
+    "turns": 109,
     "reason": "starved",
-    "score": 123
+    "score": 108
   },
   {
     "match": 64,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 103,
+    "reason": "starved",
+    "score": 102
   },
   {
     "match": 65,
@@ -470,17 +470,17 @@
   },
   {
     "match": 68,
-    "survived": false,
-    "turns": 120,
-    "reason": "starved",
-    "score": 119
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 69,
-    "survived": false,
-    "turns": 106,
-    "reason": "starved",
-    "score": 105
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 70,
@@ -491,10 +491,10 @@
   },
   {
     "match": 71,
-    "survived": false,
-    "turns": 104,
-    "reason": "starved",
-    "score": 103
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 72,
@@ -505,10 +505,10 @@
   },
   {
     "match": 73,
-    "survived": false,
-    "turns": 108,
-    "reason": "starved",
-    "score": 107
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 74,
@@ -519,10 +519,10 @@
   },
   {
     "match": 75,
-    "survived": false,
-    "turns": 110,
-    "reason": "starved",
-    "score": 109
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 76,
@@ -541,30 +541,30 @@
   {
     "match": 78,
     "survived": false,
-    "turns": 150,
+    "turns": 106,
     "reason": "starved",
-    "score": 149
+    "score": 105
   },
   {
     "match": 79,
-    "survived": false,
-    "turns": 120,
-    "reason": "starved",
-    "score": 119
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 80,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 114,
+    "reason": "starved",
+    "score": 113
   },
   {
     "match": 81,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 116,
+    "reason": "starved",
+    "score": 115
   },
   {
     "match": 82,
@@ -575,24 +575,24 @@
   },
   {
     "match": 83,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 137,
+    "reason": "starved",
+    "score": 136
   },
   {
     "match": 84,
     "survived": false,
-    "turns": 131,
+    "turns": 109,
     "reason": "starved",
-    "score": 130
+    "score": 108
   },
   {
     "match": 85,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 116,
+    "reason": "starved",
+    "score": 115
   },
   {
     "match": 86,
@@ -610,38 +610,38 @@
   },
   {
     "match": 88,
-    "survived": false,
-    "turns": 106,
-    "reason": "starved",
-    "score": 105
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 89,
     "survived": false,
-    "turns": 126,
+    "turns": 124,
     "reason": "starved",
-    "score": 125
+    "score": 123
   },
   {
     "match": 90,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 123,
+    "reason": "starved",
+    "score": 122
   },
   {
     "match": 91,
     "survived": false,
-    "turns": 111,
+    "turns": 134,
     "reason": "starved",
-    "score": 110
+    "score": 133
   },
   {
     "match": 92,
-    "survived": true,
-    "turns": 150,
-    "reason": "maxTurns",
-    "score": 249
+    "survived": false,
+    "turns": 108,
+    "reason": "starved",
+    "score": 107
   },
   {
     "match": 93,
@@ -652,10 +652,10 @@
   },
   {
     "match": 94,
-    "survived": false,
-    "turns": 108,
-    "reason": "starved",
-    "score": 107
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   },
   {
     "match": 95,
@@ -666,37 +666,37 @@
   },
   {
     "match": 96,
-    "survived": false,
-    "turns": 106,
-    "reason": "starved",
-    "score": 105
-  },
-  {
-    "match": 97,
-    "survived": false,
-    "turns": 133,
-    "reason": "starved",
-    "score": 132
-  },
-  {
-    "match": 98,
-    "survived": false,
-    "turns": 102,
-    "reason": "starved",
-    "score": 101
-  },
-  {
-    "match": 99,
     "survived": true,
     "turns": 150,
     "reason": "maxTurns",
     "score": 249
   },
   {
-    "match": 100,
+    "match": 97,
     "survived": false,
-    "turns": 131,
+    "turns": 125,
     "reason": "starved",
-    "score": 130
+    "score": 124
+  },
+  {
+    "match": 98,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
+  },
+  {
+    "match": 99,
+    "survived": false,
+    "turns": 101,
+    "reason": "starved",
+    "score": 100
+  },
+  {
+    "match": 100,
+    "survived": true,
+    "turns": 150,
+    "reason": "maxTurns",
+    "score": 249
   }
 ]

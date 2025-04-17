@@ -1,4 +1,3 @@
-// === Battlesnake with Live Tuning, Match Logging, and Anti-Trap Meta AI ===
 
 import fs from "fs";
 const config = JSON.parse(fs.readFileSync(new URL("./config_best.json", import.meta.url)));

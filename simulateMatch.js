@@ -1,7 +1,7 @@
 import fs from "fs";
 import { move as simulateMove } from "./moveLogic.js";
 
-// === SETTINGS ===
+
 const BOARD_WIDTH = 11;
 const BOARD_HEIGHT = 11;
 const MAX_TURNS = 150;
@@ -9,7 +9,7 @@ const MATCH_COUNT = 100;
 const ENEMY_COUNT = 2;
 const FOOD_COUNT = 5;
 
-// === HELPERS ===
+
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -98,7 +98,7 @@ function moveTo(pos, dir) {
   };
 }
 
-// === SIMULATE ONE MATCH ===
+
 function simulateSingleMatch(matchIndex) {
   const gameState = generateGameState();
   let alive = true;
@@ -111,7 +111,7 @@ function simulateSingleMatch(matchIndex) {
     const nextMove = simulateMove(gameState);
     const newHead = moveTo(gameState.you.body[0], nextMove.move);
 
-    // Check wall collision
+    
     if (
       newHead.x < 0 || newHead.x >= BOARD_WIDTH ||
       newHead.y < 0 || newHead.y >= BOARD_HEIGHT
@@ -121,7 +121,7 @@ function simulateSingleMatch(matchIndex) {
       break;
     }
 
-    // Check body collision
+    
     const occupied = new Set();
     for (const snake of gameState.board.snakes) {
       for (const part of snake.body) {
@@ -134,24 +134,24 @@ function simulateSingleMatch(matchIndex) {
       break;
     }
 
-    // Move the snake
+    
     gameState.you.body.unshift(newHead);
     gameState.you.health -= 1;
 
-    // Check if food is eaten
+    
     const foodIndex = gameState.board.food.findIndex(f => f.x === newHead.x && f.y === newHead.y);
     if (foodIndex !== -1) {
       gameState.you.health = 100;
       gameState.board.food.splice(foodIndex, 1);
 
-      // Optional: Respawn food
+      
       const newFood = {
         x: randInt(0, BOARD_WIDTH - 1),
         y: randInt(0, BOARD_HEIGHT - 1)
       };
       gameState.board.food.push(newFood);
     } else {
-      gameState.you.body.pop(); // no growth if no food
+      gameState.you.body.pop(); 
     }
 
     if (gameState.you.health <= 0) {
@@ -183,7 +183,7 @@ function simulateSingleMatch(matchIndex) {
   };
 }
 
-// === BATCH LOOP ===
+
 const results = [];
 for (let i = 0; i < MATCH_COUNT; i++) {
   const result = simulateSingleMatch(i + 1);
