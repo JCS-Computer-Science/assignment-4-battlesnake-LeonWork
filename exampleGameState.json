@@ -1,0 +1,24 @@
+{
+    "game": { "id": "test" },
+    "turn": 0,
+    "board": {
+      "height": 11,
+      "width": 11,
+      "food": [],
+      "snakes": [
+        {
+          "id": "you",
+          "name": "Your Snake",
+          "health": 100,
+          "body": [ { "x": 5, "y": 5 }, { "x": 5, "y": 4 }, { "x": 5, "y": 3 } ]
+        }
+      ]
+    },
+    "you": {
+      "id": "you",
+      "name": "Your Snake",
+      "health": 100,
+      "body": [ { "x": 5, "y": 5 }, { "x": 5, "y": 4 }, { "x": 5, "y": 3 } ]
+    }
+  }
+  
