@@ -1,16 +1,19 @@
-// === Improved metaTrainer.js with mutation decay, tournament validation, and logging ===
+// === metaTrainer.js ===
 import fs from "fs";
 import { execSync } from "child_process";
 
-const GENERATIONS = 20;
-const CANDIDATES = 3;
-const MATCH_COUNT = 100;
+const GENERATIONS = 30;
+const CANDIDATES_PER_GEN = 4;
+
+if (!fs.existsSync("config.json")) {
+  console.error("❌ config.json missing.");
+  process.exit(1);
+}
 
 const baseConfig = JSON.parse(fs.readFileSync("config.json", "utf8"));
 
-function mutate(config, gen) {
-  const decayFactor = Math.max(0.3, 1 - gen / 20);
-  const mutateVal = (x) => parseFloat((x * (0.9 + Math.random() * (0.2 * decayFactor))).toFixed(2));
+function mutate(config) {
+  const mutateVal = (x) => parseFloat((x * (0.9 + Math.random() * 0.2)).toFixed(2));
   return {
     foodWeight: mutateVal(config.foodWeight),
     aggressionWeight: mutateVal(config.aggressionWeight),
@@ -20,49 +23,82 @@ function mutate(config, gen) {
   };
 }
 
-function simulate(config, tournament = false) {
-  const file = tournament ? "tournament_results.json" : "batch_results.json";
+function runSimulation(config) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   execSync("npm run simulate-match", { stdio: "ignore" });
+  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
 
-  const results = JSON.parse(fs.readFileSync(file, "utf8"));
-  let total = 0, survived = 0, starved = 0, kills = 0;
-  for (const m of results) {
-    total += m.score;
-    if (m.survived) survived++;
-    if (m.deathCause === "starvation" || m.reason === "starved") starved++;
-    kills += m.kills;
-  }
-  return {
-    score: total / results.length,
-    survivalRate: (survived / results.length) * 100,
-    starvationRate: (starved / results.length) * 100,
-    avgKills: kills / results.length,
-    config
-  };
+  const totalScore = results.reduce((sum, m) => sum + m.score, 0);
+  const avgKills = results.reduce((sum, m) => sum + (m.kills || 0), 0) / results.length;
+  const starvationDeaths = results.filter(m => m.reason === "starved").length;
+  const survivalRate = results.filter(m => m.survived).length / results.length * 100;
+  const starvationRate = starvationDeaths / results.length * 100;
+
+  return { totalScore, survivalRate, starvationRate, avgKills };
 }
 
-function trainMeta(gens = GENERATIONS) {
-  let best = simulate(baseConfig);
-  fs.writeFileSync("config_best.json", JSON.stringify(best.config, null, 2));
-  fs.writeFileSync("training_log.csv", "generation,score,survivalRate,starvationRate,avgKills,config\n");
-  fs.appendFileSync("training_log.csv", `1,${best.score.toFixed(2)},${best.survivalRate.toFixed(1)},${best.starvationRate.toFixed(1)},${best.avgKills.toFixed(2)},${JSON.stringify(best.config)}\n`);
-
-  for (let g = 2; g <= gens; g++) {
-    const candidates = [best];
-    for (let i = 0; i < CANDIDATES - 1; i++) {
-      candidates.push(simulate(mutate(best.config, g)));
-    }
-    const selected = candidates.reduce((a, b) => (b.score > a.score ? b : a));
-    if (selected.score > best.score) {
-      best = selected;
-      fs.writeFileSync("config_best.json", JSON.stringify(best.config, null, 2));
-    }
-    fs.appendFileSync("training_log.csv", `${g},${selected.score.toFixed(2)},${selected.survivalRate.toFixed(1)},${selected.starvationRate.toFixed(1)},${selected.avgKills.toFixed(2)},${JSON.stringify(selected.config)}\n`);
-    console.log(`Gen ${g}: Score ${selected.score.toFixed(2)} | Survival ${selected.survivalRate.toFixed(1)}% | Starved ${selected.starvationRate.toFixed(1)}% | Kills ${selected.avgKills.toFixed(2)}`);
-  }
-
-  console.log("\n🏆 Best Config:", best.config);
+function runTournament(config) {
+  fs.writeFileSync("config_best.json", JSON.stringify(config, null, 2));
+  execSync("node tournamentRunner.js", { stdio: "ignore" });
+  const results = JSON.parse(fs.readFileSync("tournament_results.json", "utf8"));
+  const winRate = results.filter(r => r.win).length / results.length * 100;
+  return winRate;
 }
 
-trainMeta();
+function fitness({ totalScore, survivalRate, starvationRate, avgKills }, winRate) {
+  return (
+    totalScore / 100 +
+    winRate * 2 +
+    survivalRate +
+    avgKills * 50 -
+    starvationRate * 1.5
+  );
+}
+
+function autoCommit(message) {
+  execSync("git add config_best.json meta_training_log.csv", { stdio: "ignore" });
+  execSync(`git commit -m \"🤖 ${message}\"`, { stdio: "ignore" });
+  execSync("git push", { stdio: "ignore" });
+}
+
+function train(generations = GENERATIONS) {
+  let best = baseConfig;
+  let bestMetrics = runSimulation(best);
+  const bestWinRate = runTournament(best);
+  let bestFitness = fitness(bestMetrics, bestWinRate);
+
+  console.log(`\n🎯 Gen 0: WinRate ${bestWinRate.toFixed(1)}% | Score ${bestMetrics.totalScore} | Survival ${bestMetrics.survivalRate.toFixed(1)}%`);
+
+  fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
+  fs.appendFileSync("meta_training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
+  fs.appendFileSync("meta_training_log.csv", `0,${bestMetrics.totalScore},${bestMetrics.survivalRate},${bestMetrics.starvationRate},${bestMetrics.avgKills},${bestWinRate},${JSON.stringify(best)}\n`);
+
+  for (let i = 1; i <= generations; i++) {
+    const candidates = Array.from({ length: CANDIDATES_PER_GEN }, () => mutate(best));
+    const evaluations = candidates.map((config) => {
+      const sim = runSimulation(config);
+      const winRate = runTournament(config);
+      return { config, fitness: fitness(sim, winRate), sim, winRate };
+    });
+
+    const top = evaluations.reduce((a, b) => (a.fitness > b.fitness ? a : b));
+
+    if (top.fitness > bestFitness) {
+      best = top.config;
+      bestFitness = top.fitness;
+      fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
+    }
+
+    fs.appendFileSync(
+      "meta_training_log.csv",
+      `${i},${top.sim.totalScore},${top.sim.survivalRate},${top.sim.starvationRate},${top.sim.avgKills},${top.winRate},${JSON.stringify(top.config)}\n`
+    );
+
+    console.log(`Gen ${i}: WinRate ${top.winRate.toFixed(1)}% | Score ${top.sim.totalScore} | Survival ${top.sim.survivalRate.toFixed(1)}%`);
+  }
+
+  autoCommit("Auto-trained new meta config");
+  console.log("\n🏁 Final Best Config:", best);
+}
+
+train();
