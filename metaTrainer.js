@@ -2,7 +2,7 @@
 import fs from "fs";
 import { execSync } from "child_process";
 
-const GENERATIONS = 5;
+const GENERATIONS = 20;
 const MATCH_COUNT = 100;
 const CANDIDATES = 3;
 
