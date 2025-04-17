@@ -9,7 +9,7 @@
   "scripts": {
     "start": "nodemon index.js",
     "simulate-match": "node simulateMatch.js",
-    "train": "node trainer.js"
+    "train": "node metaTrainer.js"
   },
   "repository": {
     "type": "git",
