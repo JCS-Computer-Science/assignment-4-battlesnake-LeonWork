@@ -1,15 +1,16 @@
-// ===== metaTrainer.js =====
+// === Improved metaTrainer.js with mutation decay, tournament validation, and logging ===
 import fs from "fs";
 import { execSync } from "child_process";
 
 const GENERATIONS = 20;
-const MATCH_COUNT = 100;
 const CANDIDATES = 3;
+const MATCH_COUNT = 100;
 
 const baseConfig = JSON.parse(fs.readFileSync("config.json", "utf8"));
 
-function mutate(config) {
-  const mutateVal = (x) => parseFloat((x * (0.9 + Math.random() * 0.2)).toFixed(2));
+function mutate(config, gen) {
+  const decayFactor = Math.max(0.3, 1 - gen / 20);
+  const mutateVal = (x) => parseFloat((x * (0.9 + Math.random() * (0.2 * decayFactor))).toFixed(2));
   return {
     foodWeight: mutateVal(config.foodWeight),
     aggressionWeight: mutateVal(config.aggressionWeight),
@@ -19,11 +20,12 @@ function mutate(config) {
   };
 }
 
-function simulate(config) {
+function simulate(config, tournament = false) {
+  const file = tournament ? "tournament_results.json" : "batch_results.json";
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   execSync("npm run simulate-match", { stdio: "ignore" });
-  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
 
+  const results = JSON.parse(fs.readFileSync(file, "utf8"));
   let total = 0, survived = 0, starved = 0, kills = 0;
   for (const m of results) {
     total += m.score;
@@ -49,7 +51,7 @@ function trainMeta(gens = GENERATIONS) {
   for (let g = 2; g <= gens; g++) {
     const candidates = [best];
     for (let i = 0; i < CANDIDATES - 1; i++) {
-      candidates.push(simulate(mutate(best.config)));
+      candidates.push(simulate(mutate(best.config, g)));
     }
     const selected = candidates.reduce((a, b) => (b.score > a.score ? b : a));
     if (selected.score > best.score) {
