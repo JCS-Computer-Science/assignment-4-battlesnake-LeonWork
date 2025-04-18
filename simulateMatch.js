@@ -279,6 +279,10 @@ function simulateSingleMatch(matchIndex) {
     }
   }
 
+  const youAlive = alive;
+  const otherSnakesAlive = gameState.board.snakes.filter(s => s.id !== "you" && s.health > 0);
+  const win = youAlive && otherSnakesAlive.length === 0;
+
   const score =
     (alive ? 300 : 0) +
     gameState.turn +
@@ -298,7 +302,8 @@ function simulateSingleMatch(matchIndex) {
     stayedNearCenter,
     avoidedWalls,
     longSurvivalBonus,
-    score
+    score,
+    win
   };
 }
 
@@ -307,9 +312,6 @@ for (let i = 0; i < MATCH_COUNT; i++) {
   const result = simulateSingleMatch(i + 1);
   results.push(result);
 }
-
-// see your original posted version — it’s well done
-// just make sure the last few lines look like this:
 
 const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
 const survived = results.filter(r => r.survived).length;
