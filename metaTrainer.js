@@ -43,7 +43,7 @@ function averageTournamentWinRate() {
 function runTrial(config) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   try {
-    execSync("npm run simulate-match", { stdio: "inherit" });
+    execSync("node simulateMatch.js", { stdio: "inherit" });
     execSync("npm run tournament", { stdio: "ignore" });
   } catch (error) {
     return { score: -9999, results: [], tournamentWinRate: 0 };
