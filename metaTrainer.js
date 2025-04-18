@@ -27,13 +27,6 @@ function mutate(config) {
   };
 }
 
-function averageScoreFromLog() {
-  if (!fs.existsSync("batch_results.json")) return -9999;
-  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-  const totalScore = results.reduce((sum, m) => sum + m.score, 0);
-  return Math.round(totalScore);
-}
-
 function average(results, key) {
   return parseFloat((results.reduce((sum, r) => sum + (r[key] || 0), 0) / results.length).toFixed(2));
 }
@@ -42,15 +35,23 @@ function averageWinRate(results) {
   return results.filter(r => r.win).length / results.length * 100;
 }
 
+function averageTournamentWinRate() {
+  const results = JSON.parse(fs.readFileSync("tournament_results.json", "utf8"));
+  return results.filter(r => r.win).length / results.length * 100;
+}
+
 function runTrial(config) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   try {
     execSync("npm run simulate-match", { stdio: "ignore" });
+    execSync("npm run tournament", { stdio: "ignore" });
   } catch (error) {
-    return { score: -9999, results: [] };
+    return { score: -9999, results: [], tournamentWinRate: 0 };
   }
   const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-  return { score: averageScoreFromLog(), results };
+  const score = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+  const tournamentWinRate = averageTournamentWinRate();
+  return { score: Math.round(score), results, tournamentWinRate };
 }
 
 function autoCommit() {
@@ -72,15 +73,15 @@ function train(gens = 30) {
 
   for (let i = 0; i < gens; i++) {
     const trial = mutate(best);
-    const { score, results } = runTrial(trial);
+    const { score, results, tournamentWinRate } = runTrial(trial);
     const survival = average(results, "survived") * 100;
     const starvation = average(results, "starved") * 100;
     const kills = average(results, "kills");
     const winRate = averageWinRate(results);
 
-    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}%`);
+    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}% | Tourney Wins ${tournamentWinRate.toFixed(1)}%`);
 
-    logLines.push(`${i},${score},${survival},${starvation},${kills},${winRate.toFixed(0)},${JSON.stringify(trial)}`);
+    logLines.push(`${i},${score},${survival},${starvation},${kills},${tournamentWinRate.toFixed(0)},${JSON.stringify(trial)}`);
 
     if (score > bestScore) {
       bestScore = score;
