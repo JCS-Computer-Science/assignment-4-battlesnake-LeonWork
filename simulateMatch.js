@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "fs"; 
 import { move as simulateMove } from "./moveLogic.js";
 
 const BOARD_WIDTH = 11;
@@ -279,10 +279,6 @@ function simulateSingleMatch(matchIndex) {
     }
   }
 
-  const youAlive = alive;
-  const otherSnakesAlive = gameState.board.snakes.filter(s => s.id !== "you" && s.health > 0);
-  const win = youAlive && otherSnakesAlive.length === 0;
-
   const score =
     (alive ? 300 : 0) +
     gameState.turn +
@@ -291,6 +287,9 @@ function simulateSingleMatch(matchIndex) {
     Math.floor(stayedNearCenter / 10) * 5 +
     Math.floor(avoidedWalls / 10) * 3 +
     longSurvivalBonus * 10;
+
+  const remaining = gameState.board.snakes.filter(s => s.id === "you" || s.id.startsWith("enemy_"));
+  const onlyYouLeft = remaining.length === 1 && remaining[0].id === "you";
 
   return {
     match: matchIndex,
@@ -302,15 +301,14 @@ function simulateSingleMatch(matchIndex) {
     stayedNearCenter,
     avoidedWalls,
     longSurvivalBonus,
-    score,
-    win
+    win: alive && onlyYouLeft,  // ✅ TRACKS VICTORIES
+    score
   };
 }
 
 const results = [];
 for (let i = 0; i < MATCH_COUNT; i++) {
-  const result = simulateSingleMatch(i + 1);
-  results.push(result);
+  results.push(simulateSingleMatch(i + 1));
 }
 
 const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
