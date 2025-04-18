@@ -27,16 +27,19 @@ function mutate(config) {
   };
 }
 
+function averageScoreFromLog() {
+  if (!fs.existsSync("batch_results.json")) return -9999;
+  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
+  const totalScore = results.reduce((sum, m) => sum + m.score, 0);
+  return Math.round(totalScore);
+}
+
 function average(results, key) {
   return parseFloat((results.reduce((sum, r) => sum + (r[key] || 0), 0) / results.length).toFixed(2));
 }
 
 function averageWinRate(results) {
   return results.filter(r => r.win).length / results.length * 100;
-}
-
-function averageScore(results) {
-  return Math.round(results.reduce((sum, r) => sum + (r.score || 0), 0));
 }
 
 function runTrial(config) {
@@ -47,7 +50,7 @@ function runTrial(config) {
     return { score: -9999, results: [] };
   }
   const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-  return { score: averageScore(results), results };
+  return { score: averageScoreFromLog(), results };
 }
 
 function autoCommit() {
@@ -65,7 +68,7 @@ function autoCommit() {
 function train(gens = 30) {
   let best = baseConfig;
   let bestScore = -Infinity;
-  const logLines = ["generation,score,survivalRate,starvationRate,avgKills,winRate,config"];
+  const logLines = [];
 
   for (let i = 0; i < gens; i++) {
     const trial = mutate(best);
@@ -86,6 +89,9 @@ function train(gens = 30) {
     }
   }
 
+  if (!fs.existsSync("training_log.csv")) {
+    fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
+  }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
   autoCommit();
 }
