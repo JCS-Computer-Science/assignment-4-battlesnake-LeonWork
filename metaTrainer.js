@@ -17,13 +17,17 @@ if (!fs.existsSync("meta_config.json")) {
 const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
 
 function mutate(config) {
-  const mutateVal = (x) => parseFloat((x * (0.9 + Math.random() * 0.2)).toFixed(2));
+  const mutateVal = (x, range = 0.05) => {
+    const factor = 1 + (Math.random() * range * 2 - range);  // ±5% mutation
+    return parseFloat((x * factor).toFixed(2));
+  };
+
   return {
     foodWeight: mutateVal(config.foodWeight),
     aggressionWeight: mutateVal(config.aggressionWeight),
     tailPriorityWeight: mutateVal(config.tailPriorityWeight),
     trapAvoidanceWeight: mutateVal(config.trapAvoidanceWeight),
-    spaceThreshold: Math.max(5, Math.min(20, Math.round(config.spaceThreshold + (Math.random() - 0.5) * 2)))
+    spaceThreshold: Math.max(5, Math.min(20, Math.round(config.spaceThreshold + (Math.random() - 0.5))))
   };
 }
 
@@ -35,31 +39,30 @@ function averageWinRate(results) {
   return results.filter(r => r.win).length / results.length * 100;
 }
 
+function averageTournamentWinRate() {
+  const results = JSON.parse(fs.readFileSync("tournament_results.json", "utf8"));
+  return results.filter(r => r.win).length / results.length * 100;
+}
+
 function runTrial(config) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   try {
-    execSync("node simulateMatch.js", { stdio: "ignore", env: { ...process.env, SILENT: "1" } });
-    execSync("npm run tournament", { stdio: "ignore", env: { ...process.env, SILENT: "1" } });
-
-    const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-    const tournamentResults = JSON.parse(fs.readFileSync("tournament_results.json", "utf8"));
-
-    const score = results.reduce((sum, r) => sum + r.score, 0) / results.length;
-    const tournamentWinRate = tournamentResults.filter(r => r.win).length / tournamentResults.length * 100;
-
-    return { score: Math.round(score), results, tournamentWinRate };
-
+    execSync("node simulateMatch.js", { stdio: "ignore" });
+    execSync("npm run tournament", { stdio: "ignore" });
   } catch (error) {
-    console.warn("❌ runTrial failed:", error.message);
     return { score: -9999, results: [], tournamentWinRate: 0 };
   }
+  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
+  const score = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+  const tournamentWinRate = averageTournamentWinRate();
+  return { score: Math.round(score), results, tournamentWinRate };
 }
 
 function autoCommit() {
   try {
     execSync("git config --global user.name 'github-actions'");
     execSync("git config --global user.email 'bot@github.com'");
-    execSync("git add config_best.json meta_config.json training_log.csv");
+    execSync("git add config_best.json training_log.csv meta_config.json");
     execSync("git commit -m '🤖 Auto-trained new meta config'");
     execSync("git push");
   } catch (e) {
@@ -75,10 +78,10 @@ function train(gens = 30) {
   for (let i = 0; i < gens; i++) {
     const trial = mutate(best);
     const { score, results, tournamentWinRate } = runTrial(trial);
-    const survival = average(results, "survived") * 100 || 0;
-    const starvation = average(results, "starved") * 100 || 0;
-    const kills = average(results, "kills") || 0;
-    const winRate = averageWinRate(results) || 0;
+    const survival = average(results, "survived") * 100;
+    const starvation = average(results, "starved") * 100;
+    const kills = average(results, "kills");
+    const winRate = averageWinRate(results);
 
     console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}% | Tourney Wins ${tournamentWinRate.toFixed(1)}%`);
 
@@ -87,8 +90,6 @@ function train(gens = 30) {
     if (score > bestScore) {
       bestScore = score;
       best = trial;
-
-      // ✅ Save only if it's actually better
       fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
       fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
     }
@@ -98,7 +99,6 @@ function train(gens = 30) {
     fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
   }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
-
   autoCommit();
 }
 
