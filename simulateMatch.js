@@ -1,4 +1,4 @@
-import fs from "fs"; 
+import fs from "fs";
 import { move as simulateMove } from "./moveLogic.js";
 
 const BOARD_WIDTH = 11;
@@ -8,7 +8,11 @@ const MATCH_COUNT = 100;
 const ENEMY_COUNT = 3;
 const FOOD_COUNT = 6;
 const SILENT = process.env.SILENT === "1";
+const CSV_LOG_PATH = "match_log.csv";
 
+if (!fs.existsSync(CSV_LOG_PATH)) {
+  fs.writeFileSync(CSV_LOG_PATH, "match,survived,win,score,reason,foodEaten,kills\n");
+}
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -95,103 +99,6 @@ function moveTo(pos, dir) {
   };
 }
 
-function manhattan(a, b) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
-function smartEnemyMove(snake, board) {
-  const directions = ["up", "down", "left", "right"];
-  const head = snake.body[0];
-  let bestMove = "up";
-  let maxValue = -Infinity;
-
-  for (const dir of directions) {
-    const next = moveTo(head, dir);
-    if (next.x < 0 || next.x >= board.width || next.y < 0 || next.y >= board.height) continue;
-
-    let occupied = false;
-    for (const s of board.snakes) {
-      for (const part of s.body) {
-        if (part.x === next.x && part.y === next.y) {
-          occupied = true;
-          break;
-        }
-      }
-      if (occupied) break;
-    }
-    if (occupied) continue;
-
-    let value = 0;
-    const nearestFood = board.food.sort((a, b) => manhattan(next, a) - manhattan(next, b))[0];
-    const tail = snake.body[snake.body.length - 1];
-
-    switch (snake.type) {
-      case "aggressive": {
-        const enemies = board.snakes.filter(s => s.id !== snake.id);
-        for (const e of enemies) {
-          const eHead = e.body[0];
-          value += 10 / (manhattan(next, eHead) + 1);
-        }
-        break;
-      }
-      case "evasive": {
-        for (const s of board.snakes) {
-          if (s.id === snake.id) continue;
-          value -= 5 / (manhattan(next, s.body[0]) + 1);
-        }
-        value += 3 / (manhattan(next, tail) + 1);
-        break;
-      }
-      case "hunter": {
-        if (nearestFood) {
-          value += 20 / (manhattan(next, nearestFood) + 1);
-        }
-        break;
-      }
-    }
-
-    let space = 0;
-    const visited = new Set();
-    const queue = [next];
-    while (queue.length && space < 20) {
-      const curr = queue.shift();
-      const key = `${curr.x},${curr.y}`;
-      if (visited.has(key)) continue;
-      if (curr.x < 0 || curr.y < 0 || curr.x >= board.width || curr.y >= board.height) continue;
-      let block = false;
-      for (const s of board.snakes) {
-        for (const part of s.body) {
-          if (part.x === curr.x && part.y === curr.y) {
-            block = true;
-            break;
-          }
-        }
-        if (block) break;
-      }
-      if (block) continue;
-      visited.add(key);
-      space++;
-      queue.push({ x: curr.x + 1, y: curr.y });
-      queue.push({ x: curr.x - 1, y: curr.y });
-      queue.push({ x: curr.x, y: curr.y + 1 });
-      queue.push({ x: curr.x, y: curr.y - 1 });
-    }
-    value += space * 0.5;
-
-    if (value > maxValue) {
-      maxValue = value;
-      bestMove = dir;
-    }
-  }
-
-  return bestMove;
-}
-
-function centerDistance(pos) {
-  const center = { x: Math.floor(BOARD_WIDTH / 2), y: Math.floor(BOARD_HEIGHT / 2) };
-  return Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
-}
-
 function simulateSingleMatch(matchIndex) {
   const gameState = generateGameState();
   let alive = true;
@@ -205,93 +112,106 @@ function simulateSingleMatch(matchIndex) {
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     gameState.turn = turn;
 
-    const newEnemyHeads = {};
-    for (const snake of gameState.board.snakes) {
-      if (snake.id === "you") continue;
-      const move = smartEnemyMove(snake, gameState.board);
+    const allSnakes = gameState.board.snakes;
+    const moveMap = {};
+
+    for (const snake of allSnakes) {
+      const move = snake.id === "you"
+        ? simulateMove(gameState).move
+        : ["up", "down", "left", "right"][Math.floor(Math.random() * 4)];
       const newHead = moveTo(snake.body[0], move);
-      newEnemyHeads[snake.id] = newHead;
-      snake.body.unshift(newHead);
-      snake.body.pop();
+      moveMap[snake.id] = newHead;
     }
 
-    const nextMove = simulateMove(gameState);
-    const newHead = moveTo(gameState.you.body[0], nextMove.move);
+    // Process moves
+    for (const snake of allSnakes) {
+      const newHead = moveMap[snake.id];
+      snake.body.unshift(newHead);
+      snake.health--;
+      const foodIdx = gameState.board.food.findIndex(f => f.x === newHead.x && f.y === newHead.y);
+      if (foodIdx !== -1) {
+        snake.health = 100;
+        gameState.board.food.splice(foodIdx, 1);
+        if (snake.id === "you") foodEaten++;
+        if (Math.random() < 0.85) {
+          gameState.board.food.push({ x: randInt(0, BOARD_WIDTH - 1), y: randInt(0, BOARD_HEIGHT - 1) });
+        }
+      } else {
+        snake.body.pop();
+      }
+    }
 
-    for (const [id, enemyHead] of Object.entries(newEnemyHeads)) {
-      if (enemyHead.x === newHead.x && enemyHead.y === newHead.y) {
-        const myLen = gameState.you.body.length;
-        const enemy = gameState.board.snakes.find(s => s.id === id);
-        if (enemy && enemy.body.length >= myLen) {
+    // Handle collisions and out-of-bounds
+    const positions = {};
+    for (const snake of allSnakes) {
+      const head = snake.body[0];
+      const key = `${head.x},${head.y}`;
+      if (!positions[key]) positions[key] = [];
+      positions[key].push(snake);
+    }
+
+    for (const snake of allSnakes) {
+      const head = snake.body[0];
+      const key = `${head.x},${head.y}`;
+
+      const collision =
+        head.x < 0 || head.x >= BOARD_WIDTH ||
+        head.y < 0 || head.y >= BOARD_HEIGHT ||
+        positions[key].length > 1 ||
+        allSnakes.some(s => s !== snake && s.body.some(p => p.x === head.x && p.y === head.y));
+
+      if (collision || snake.health <= 0) {
+        snake.health = 0;
+        if (snake.id === "you") {
           alive = false;
-          reason = "head_to_head_loss";
-          break;
-        } else {
-          kills++;
+          reason = snake.health <= 0 ? "starved" : "collision";
         }
       }
     }
-    if (!alive) break;
 
-    if (
-      newHead.x < 0 || newHead.x >= BOARD_WIDTH ||
-      newHead.y < 0 || newHead.y >= BOARD_HEIGHT
-    ) {
-      alive = false;
-      reason = "out_of_bounds";
-      break;
-    }
-
-    const nearWall = newHead.x === 0 || newHead.y === 0 || newHead.x === BOARD_WIDTH - 1 || newHead.y === BOARD_HEIGHT - 1;
+    // Metrics
+    const head = gameState.you.body[0];
+    const nearWall = head.x === 0 || head.y === 0 || head.x === BOARD_WIDTH - 1 || head.y === BOARD_HEIGHT - 1;
     if (!nearWall) avoidedWalls++;
-    if (centerDistance(newHead) <= 3) stayedNearCenter++;
+    if (Math.abs(head.x - 5) + Math.abs(head.y - 5) <= 3) stayedNearCenter++;
     if (turn % 50 === 0 && turn > 0) longSurvivalBonus++;
 
-    const occupied = new Set();
-    for (const snake of gameState.board.snakes) {
-      for (const part of snake.body) {
-        occupied.add(`${part.x},${part.y}`);
-      }
-    }
-    if (occupied.has(`${newHead.x},${newHead.y}`)) {
-      alive = false;
-      reason = "collision";
-      break;
-    }
+    // Remove all dead snakes
+    gameState.board.snakes = gameState.board.snakes.filter(s => s.health > 0);
 
-    gameState.you.body.unshift(newHead);
-    gameState.you.health -= 1;
+    if (!gameState.board.snakes.some(s => s.id === "you")) break;
+  }
 
-    const foodIndex = gameState.board.food.findIndex(f => f.x === newHead.x && f.y === newHead.y);
-    if (foodIndex !== -1) {
-      gameState.you.health = 100;
-      gameState.board.food.splice(foodIndex, 1);
-      foodEaten++;
-      if (Math.random() < 0.85) {
-        gameState.board.food.push({ x: randInt(0, BOARD_WIDTH - 1), y: randInt(0, BOARD_HEIGHT - 1) });
-      }
+  const aliveSnakes = gameState.board.snakes.filter(s => s.health > 0);
+  const onlyYouLeft = aliveSnakes.length === 1 && aliveSnakes[0].id === "you";
+  const top2 = aliveSnakes.length <= 2 && aliveSnakes.some(s => s.id === "you");
+
+  const score =
+    (alive ? 500 : 0) +
+    (onlyYouLeft ? 1000 : 0) +
+    (top2 && !onlyYouLeft ? 300 : 0) +
+    gameState.turn +
+    foodEaten * 8 +
+    kills * 40 +
+    Math.floor(stayedNearCenter / 10) * 5 +
+    Math.floor(avoidedWalls / 10) * 3 +
+    longSurvivalBonus * 15;
+
+  if (!SILENT) {
+    if (alive && onlyYouLeft) {
+      console.log(`[✅ WIN DETECTED] Match ${matchIndex} | Score: ${score}`);
+    } else if (alive && top2) {
+      console.log(`[⚠️ CLOSE CALL] Match ${matchIndex} | Final 2 but not winner`);
     } else {
-      gameState.you.body.pop();
-    }
-
-    if (gameState.you.health <= 0) {
-      alive = false;
-      reason = "starved";
-      break;
+      console.log(`[❌ NO WIN] Match ${matchIndex} | Reason: ${reason}`);
     }
   }
 
-  const score =
-    (alive ? 300 : 0) +
-    gameState.turn +
-    foodEaten * 6 +
-    kills * 30 +
-    Math.floor(stayedNearCenter / 10) * 5 +
-    Math.floor(avoidedWalls / 10) * 3 +
-    longSurvivalBonus * 10;
-
-  const remaining = gameState.board.snakes.filter(s => s.id === "you" || s.id.startsWith("enemy_"));
-  const onlyYouLeft = remaining.length === 1 && remaining[0].id === "you";
+  try {
+    fs.appendFileSync(CSV_LOG_PATH, `${matchIndex},${alive},${onlyYouLeft},${score},${reason},${foodEaten},${kills}\n`);
+  } catch (err) {
+    console.warn(`⚠️ Could not write to CSV: ${err.message}`);
+  }
 
   return {
     match: matchIndex,
@@ -303,16 +223,12 @@ function simulateSingleMatch(matchIndex) {
     stayedNearCenter,
     avoidedWalls,
     longSurvivalBonus,
-    win: alive && onlyYouLeft,  // ✅ TRACKS VICTORIES
+    win: alive && onlyYouLeft,
     score
   };
 }
 
-const results = [];
-for (let i = 0; i < MATCH_COUNT; i++) {
-  results.push(simulateSingleMatch(i + 1));
-}
-
+const results = Array.from({ length: MATCH_COUNT }, (_, i) => simulateSingleMatch(i + 1));
 const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
 const survived = results.filter(r => r.survived).length;
 
@@ -322,6 +238,4 @@ if (!SILENT) {
   console.log(`📊 Avg Score: ${avgScore}`);
 }
 
-
 fs.writeFileSync("batch_results.json", JSON.stringify(results, null, 2));
-console.log("📝 Saved to batch_results.json");
