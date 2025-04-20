@@ -6,6 +6,8 @@ const BOARD_WIDTH = 11;
 const BOARD_HEIGHT = 11;
 const MATCH_COUNT = 50;
 const MAX_TURNS = 300;
+const SILENT = process.env.SILENT === "1";
+
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -151,9 +153,12 @@ const wins = results.filter(r => r.win).length;
 const survivalRate = (results.filter(r => r.survived).length / MATCH_COUNT) * 100;
 const avgLength = results.reduce((a, b) => a + b.length, 0) / MATCH_COUNT;
 
-console.log(`\n🏆 Tournament Results (${MATCH_COUNT} matches)`);
-console.log(`🥇 Wins: ${wins}`);
-console.log(`💡 Survival Rate: ${survivalRate.toFixed(1)}%`);
-console.log(`📏 Avg Final Length: ${avgLength.toFixed(2)}\n`);
+if (!SILENT) {
+  console.log(`\n🏆 Tournament Results (${MATCH_COUNT} matches)`);
+  console.log(`🥇 Wins: ${wins}`);
+  console.log(`💡 Survival Rate: ${survivalRate.toFixed(1)}%`);
+  console.log(`📏 Avg Final Length: ${avgLength.toFixed(2)}\n`);
+}
+
 
 fs.writeFileSync("tournament_results.json", JSON.stringify(results, null, 2));

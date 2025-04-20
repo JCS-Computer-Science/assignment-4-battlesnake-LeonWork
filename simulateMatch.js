@@ -7,6 +7,8 @@ const MAX_TURNS = 300;
 const MATCH_COUNT = 100;
 const ENEMY_COUNT = 3;
 const FOOD_COUNT = 6;
+const SILENT = process.env.SILENT === "1";
+
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -314,9 +316,12 @@ for (let i = 0; i < MATCH_COUNT; i++) {
 const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
 const survived = results.filter(r => r.survived).length;
 
-console.log(`✅ Simulated ${MATCH_COUNT} matches`);
-console.log(`🏁 Survived: ${survived}/${MATCH_COUNT}`);
-console.log(`📊 Avg Score: ${avgScore}`);
+if (!SILENT) {
+  console.log(`✅ Simulated ${MATCH_COUNT} matches`);
+  console.log(`🏁 Survived: ${survived}/${MATCH_COUNT}`);
+  console.log(`📊 Avg Score: ${avgScore}`);
+}
+
 
 fs.writeFileSync("batch_results.json", JSON.stringify(results, null, 2));
 console.log("📝 Saved to batch_results.json");

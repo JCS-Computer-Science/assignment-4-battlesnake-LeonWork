@@ -9,13 +9,11 @@ const fallbackMetaConfig = {
   spaceThreshold: 19
 };
 
-// Create meta_config.json if missing
 if (!fs.existsSync("meta_config.json")) {
   console.warn("⚠️ meta_config.json is missing, creating default baseline config.");
   fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
 }
 
-// Load base config from meta_config.json
 const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
 
 function mutate(config) {
@@ -45,8 +43,8 @@ function averageTournamentWinRate() {
 function runTrial(config) {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
   try {
-    execSync("node simulateMatch.js", { stdio: "inherit" });
-    execSync("npm run tournament", { stdio: "ignore" });
+    execSync("node simulateMatch.js", { stdio: "ignore", env: { ...process.env, SILENT: "1" } });
+    execSync("npm run tournament", { stdio: "ignore", env: { ...process.env, SILENT: "1" } });
   } catch (error) {
     return { score: -9999, results: [], tournamentWinRate: 0 };
   }
@@ -91,13 +89,11 @@ function train(gens = 30) {
     }
   }
 
-  // Write training log
   if (!fs.existsSync("training_log.csv")) {
     fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
   }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
 
-  // ✅ Save best config to both locations
   fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
   fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
 
