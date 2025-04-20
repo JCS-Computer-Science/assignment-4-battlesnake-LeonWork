@@ -9,12 +9,13 @@ const fallbackMetaConfig = {
   spaceThreshold: 19
 };
 
-// Create meta_config.json if it doesn't exist
+// Create meta_config.json if missing
 if (!fs.existsSync("meta_config.json")) {
   console.warn("⚠️ meta_config.json is missing, creating default baseline config.");
   fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
 }
 
+// Load base config from meta_config.json
 const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
 
 function mutate(config) {
@@ -87,7 +88,6 @@ function train(gens = 30) {
     if (score > bestScore) {
       bestScore = score;
       best = trial;
-      fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
     }
   }
 
@@ -97,7 +97,8 @@ function train(gens = 30) {
   }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
 
-  // ✅ Save best config back to meta_config.json
+  // ✅ Save best config to both locations
+  fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
   fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
 
   autoCommit();
