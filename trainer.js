@@ -1,6 +1,6 @@
 import fs from "fs";
 import { execSync } from "child_process";
-
+//fix this for now, my trainer is bugged
 const MATCH_COUNT = 100;
 const GENERATIONS = 30;
 const LOG_FILE = "training_log.csv";
