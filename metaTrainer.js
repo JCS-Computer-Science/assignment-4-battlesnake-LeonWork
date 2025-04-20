@@ -9,6 +9,7 @@ const fallbackMetaConfig = {
   spaceThreshold: 19
 };
 
+// Create meta_config.json if it doesn't exist
 if (!fs.existsSync("meta_config.json")) {
   console.warn("⚠️ meta_config.json is missing, creating default baseline config.");
   fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
@@ -58,7 +59,7 @@ function autoCommit() {
   try {
     execSync("git config --global user.name 'github-actions'");
     execSync("git config --global user.email 'bot@github.com'");
-    execSync("git add config_best.json training_log.csv");
+    execSync("git add config_best.json meta_config.json training_log.csv");
     execSync("git commit -m '🤖 Auto-trained new meta config'");
     execSync("git push");
   } catch (e) {
@@ -90,10 +91,15 @@ function train(gens = 30) {
     }
   }
 
+  // Write training log
   if (!fs.existsSync("training_log.csv")) {
     fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
   }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
+
+  // ✅ Save best config back to meta_config.json
+  fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
+
   autoCommit();
 }
 
