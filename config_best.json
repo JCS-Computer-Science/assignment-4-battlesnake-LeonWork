@@ -1,7 +1,7 @@
 {
-  "foodWeight": 10.51,
-  "aggressionWeight": 4.54,
-  "tailPriorityWeight": 3.77,
-  "trapAvoidanceWeight": 30.93,
-  "spaceThreshold": 18
+  "foodWeight": 8.34,
+  "aggressionWeight": 3.56,
+  "tailPriorityWeight": 3.69,
+  "trapAvoidanceWeight": 29.94,
+  "spaceThreshold": 19
 }
