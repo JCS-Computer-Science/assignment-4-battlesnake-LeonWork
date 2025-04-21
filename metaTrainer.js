@@ -14,11 +14,15 @@ if (!fs.existsSync("meta_config.json")) {
   fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
 }
 
+if (!fs.existsSync("configs_archive")) {
+  fs.mkdirSync("configs_archive");
+}
+
 const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
 
 function mutate(config) {
   const mutateVal = (x, range = 0.05) => {
-    const factor = 1 + (Math.random() * range * 2 - range);  // ±5% mutation
+    const factor = 1 + (Math.random() * range * 2 - range);
     return parseFloat((x * factor).toFixed(2));
   };
 
@@ -53,16 +57,18 @@ function runTrial(config) {
     return { score: -9999, results: [], tournamentWinRate: 0 };
   }
   const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-  const score = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+  const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
   const tournamentWinRate = averageTournamentWinRate();
-  return { score: Math.round(score), results, tournamentWinRate };
+  const winRate = averageWinRate(results);
+  const fitness = avgScore + (winRate * 20) + tournamentWinRate * 5;
+  return { score: Math.round(avgScore), results, winRate, tournamentWinRate, fitness };
 }
 
 function autoCommit() {
   try {
     execSync("git config --global user.name 'github-actions'");
     execSync("git config --global user.email 'bot@github.com'");
-    execSync("git add config_best.json training_log.csv meta_config.json");
+    execSync("git add config_best.json meta_config.json training_log.csv");
     execSync("git commit -m '🤖 Auto-trained new meta config'");
     execSync("git push");
   } catch (e) {
@@ -70,33 +76,39 @@ function autoCommit() {
   }
 }
 
+function archiveConfig(config, fitness) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `configs_archive/config_${timestamp}_F${Math.round(fitness)}.json`;
+  fs.writeFileSync(filename, JSON.stringify(config, null, 2));
+}
+
 function train(gens = 30) {
   let best = baseConfig;
-  let bestScore = -Infinity;
+  let bestFitness = -Infinity;
   const logLines = [];
 
   for (let i = 0; i < gens; i++) {
     const trial = mutate(best);
-    const { score, results, tournamentWinRate } = runTrial(trial);
+    const { score, results, winRate, tournamentWinRate, fitness } = runTrial(trial);
     const survival = average(results, "survived") * 100;
     const starvation = average(results, "starved") * 100;
     const kills = average(results, "kills");
-    const winRate = averageWinRate(results);
 
-    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}% | Tourney Wins ${tournamentWinRate.toFixed(1)}%`);
+    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}% | Tourney Wins ${tournamentWinRate.toFixed(1)}% | Fitness ${fitness.toFixed(0)}`);
 
-    logLines.push(`${i},${score},${survival},${starvation},${kills},${tournamentWinRate.toFixed(0)},${JSON.stringify(trial)}`);
+    logLines.push(`${i},${score},${survival},${starvation},${kills},${tournamentWinRate.toFixed(0)},${fitness.toFixed(0)},${JSON.stringify(trial)}`);
 
-    if (score > bestScore) {
-      bestScore = score;
+    if (fitness > bestFitness) {
+      bestFitness = fitness;
       best = trial;
       fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
       fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
+      archiveConfig(best, fitness);
     }
   }
 
   if (!fs.existsSync("training_log.csv")) {
-    fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,config\n`);
+    fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,fitness,config\n`);
   }
   fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
   autoCommit();
