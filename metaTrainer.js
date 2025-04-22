@@ -1,117 +1,100 @@
+// === metaTrainer.js with per-mode best config saving ===
 import fs from "fs";
-import { execSync } from "child_process";
+import { simulateMatches } from "./simulateMatch.js";
 
-const fallbackMetaConfig = {
-  foodWeight: 9.24,
-  aggressionWeight: 3.9,
-  tailPriorityWeight: 3.36,
-  trapAvoidanceWeight: 27.42,
-  spaceThreshold: 19
-};
+const MODES = ["balanced", "aggressor", "survivor", "hunter"];
+const GENERATIONS = 30;
+const MATCHES_PER_CONFIG = 50;
+const CANDIDATES = 5;
+const CONFIG_DIR = "./";
 
-if (!fs.existsSync("meta_config.json")) {
-  console.warn("⚠️ meta_config.json is missing, creating default baseline config.");
-  fs.writeFileSync("meta_config.json", JSON.stringify(fallbackMetaConfig, null, 2));
+function loadConfig(path) {
+  try {
+    return JSON.parse(fs.readFileSync(path));
+  } catch {
+    return {
+      foodWeight: 10,
+      aggressionWeight: 4,
+      tailPriorityWeight: 3.5,
+      trapAvoidanceWeight: 28,
+      spaceThreshold: 19
+    };
+  }
 }
 
-if (!fs.existsSync("configs_archive")) {
-  fs.mkdirSync("configs_archive");
+function saveConfig(path, config) {
+  fs.writeFileSync(path, JSON.stringify(config, null, 2));
 }
 
-const baseConfig = JSON.parse(fs.readFileSync("meta_config.json", "utf8"));
-
-function mutate(config) {
-  const mutateVal = (x, range = 0.05) => {
-    const factor = 1 + (Math.random() * range * 2 - range);
-    return parseFloat((x * factor).toFixed(2));
-  };
-
+function mutateConfig(config) {
+  const delta = () => (Math.random() * 0.6 - 0.3);
   return {
-    foodWeight: mutateVal(config.foodWeight),
-    aggressionWeight: mutateVal(config.aggressionWeight),
-    tailPriorityWeight: mutateVal(config.tailPriorityWeight),
-    trapAvoidanceWeight: mutateVal(config.trapAvoidanceWeight),
-    spaceThreshold: Math.max(5, Math.min(20, Math.round(config.spaceThreshold + (Math.random() - 0.5))))
+    foodWeight: +(config.foodWeight + delta()).toFixed(2),
+    aggressionWeight: +(config.aggressionWeight + delta()).toFixed(2),
+    tailPriorityWeight: +(config.tailPriorityWeight + delta()).toFixed(2),
+    trapAvoidanceWeight: +(config.trapAvoidanceWeight + delta()).toFixed(2),
+    spaceThreshold: 19
   };
 }
 
-function average(results, key) {
-  return parseFloat((results.reduce((sum, r) => sum + (r[key] || 0), 0) / results.length).toFixed(2));
+function fitness(result) {
+  return result.winRate * 20 + result.averageScore + result.survivalRate * 10 + result.tournamentWinRate * 15;
 }
 
-function averageWinRate(results) {
-  return results.filter(r => r.win).length / results.length * 100;
-}
+async function train(mode) {
+  console.log(`\n🚀 Training MODE: ${mode.toUpperCase()} (${GENERATIONS} gens)`);
 
-function averageTournamentWinRate() {
-  const results = JSON.parse(fs.readFileSync("tournament_results.json", "utf8"));
-  return results.filter(r => r.win).length / results.length * 100;
-}
+  const metaPath = `${CONFIG_DIR}meta_config_${mode}.json`;
+  const bestPath = `${CONFIG_DIR}config_best_${mode}.json`;
 
-function runTrial(config) {
-  fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
-  try {
-    execSync("node simulateMatch.js", { stdio: "ignore" });
-    execSync("npm run tournament", { stdio: "ignore" });
-  } catch (error) {
-    return { score: -9999, results: [], tournamentWinRate: 0 };
+  let baseConfig = loadConfig(bestPath);
+  if (!fs.existsSync(metaPath)) {
+    console.warn(`⚠️ ${metaPath} is missing, creating default config.`);
+    saveConfig(metaPath, baseConfig);
   }
-  const results = JSON.parse(fs.readFileSync("batch_results.json", "utf8"));
-  const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
-  const tournamentWinRate = averageTournamentWinRate();
-  const winRate = averageWinRate(results);
-  const fitness = avgScore + (winRate * 20) + tournamentWinRate * 5;
-  return { score: Math.round(avgScore), results, winRate, tournamentWinRate, fitness };
-}
 
-function autoCommit() {
-  try {
-    execSync("git config --global user.name 'github-actions'");
-    execSync("git config --global user.email 'bot@github.com'");
-    execSync("git add config_best.json meta_config.json training_log.csv");
-    execSync("git commit -m '🤖 Auto-trained new meta config'");
-    execSync("git push");
-  } catch (e) {
-    console.warn("⚠️ Auto-commit skipped or failed:", e.message);
-  }
-}
-
-function archiveConfig(config, fitness) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `configs_archive/config_${timestamp}_F${Math.round(fitness)}.json`;
-  fs.writeFileSync(filename, JSON.stringify(config, null, 2));
-}
-
-function train(gens = 30) {
-  let best = baseConfig;
   let bestFitness = -Infinity;
-  const logLines = [];
+  let bestConfig = baseConfig;
 
-  for (let i = 0; i < gens; i++) {
-    const trial = mutate(best);
-    const { score, results, winRate, tournamentWinRate, fitness } = runTrial(trial);
-    const survival = average(results, "survived") * 100;
-    const starvation = average(results, "starved") * 100;
-    const kills = average(results, "kills");
+  for (let gen = 0; gen < GENERATIONS; gen++) {
+    const candidates = [bestConfig, ...Array(CANDIDATES - 1).fill(0).map(() => mutateConfig(bestConfig))];
+    let topScore = -Infinity;
+    let topResult = null;
+    let topCandidate = null;
 
-    console.log(`🎯 Gen ${i}: WinRate ${winRate.toFixed(1)}% | Score ${score} | Survival ${survival.toFixed(1)}% | Tourney Wins ${tournamentWinRate.toFixed(1)}% | Fitness ${fitness.toFixed(0)}`);
+    for (const config of candidates) {
+      fs.writeFileSync("config.json", JSON.stringify(config));
+      const result = await simulateMatches(mode, MATCHES_PER_CONFIG);
+      const score = fitness(result);
+      if (score > topScore) {
+        topScore = score;
+        topCandidate = config;
+        topResult = result;
+      }
+    }
 
-    logLines.push(`${i},${score},${survival},${starvation},${kills},${tournamentWinRate.toFixed(0)},${fitness.toFixed(0)},${JSON.stringify(trial)}`);
+    const winRate = topResult.winRate.toFixed(1);
+    const survival = topResult.survivalRate.toFixed(1);
+    const tourneyWins = topResult.tournamentWinRate.toFixed(1);
+    const summary = `🎯 Gen ${gen} [${mode}]: WinRate ${winRate}% | Score ${topResult.averageScore} | Survival ${survival}% | Tourney Wins ${tourneyWins}% | Fitness ${topScore}`;
+    console.log(summary);
 
-    if (fitness > bestFitness) {
-      bestFitness = fitness;
-      best = trial;
-      fs.writeFileSync("config_best.json", JSON.stringify(best, null, 2));
-      fs.writeFileSync("meta_config.json", JSON.stringify(best, null, 2));
-      archiveConfig(best, fitness);
+    if (topScore > bestFitness) {
+      bestFitness = topScore;
+      bestConfig = topCandidate;
+      saveConfig(metaPath, topCandidate);
+      saveConfig(bestPath, topCandidate);
     }
   }
-
-  if (!fs.existsSync("training_log.csv")) {
-    fs.writeFileSync("training_log.csv", `generation,score,survivalRate,starvationRate,avgKills,winRate,fitness,config\n`);
-  }
-  fs.appendFileSync("training_log.csv", logLines.join("\n") + "\n");
-  autoCommit();
 }
 
-train();
+async function main() {
+  const mode = process.argv[2];
+  if (!MODES.includes(mode)) {
+    console.error("❌ Please pass a valid mode (balanced, aggressor, survivor, hunter)");
+    process.exit(1);
+  }
+  await train(mode);
+}
+
+main();

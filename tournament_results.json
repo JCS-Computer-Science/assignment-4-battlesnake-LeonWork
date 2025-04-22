@@ -1,249 +1,9 @@
 [
   {
     "survived": true,
-    "length": 38,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 41,
-    "turns": 288,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 35,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 29,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 53,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 40,
-    "turns": 295,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 31,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 26,
-    "turns": 270,
-    "win": false
-  },
-  {
-    "survived": false,
-    "length": 27,
-    "turns": 200,
-    "win": false
-  },
-  {
-    "survived": false,
-    "length": 26,
-    "turns": 216,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 38,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 25,
-    "turns": 290,
-    "win": false
-  },
-  {
-    "survived": false,
-    "length": 42,
-    "turns": 236,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 41,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 23,
-    "turns": 275,
-    "win": false
-  },
-  {
-    "survived": false,
-    "length": 27,
-    "turns": 250,
-    "win": false
-  },
-  {
-    "survived": false,
-    "length": 35,
-    "turns": 223,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 28,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 39,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 34,
-    "turns": 290,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 40,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 29,
-    "turns": 291,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 40,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 42,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 42,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 44,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 39,
-    "turns": 247,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 39,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 38,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 31,
-    "turns": 241,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 35,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 40,
-    "turns": 235,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 40,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 45,
-    "turns": 284,
-    "win": false
-  },
-  {
-    "survived": true,
-    "length": 45,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 34,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 35,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
     "length": 33,
     "turns": 299,
     "win": true
-  },
-  {
-    "survived": true,
-    "length": 45,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 40,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": false,
-    "length": 14,
-    "turns": 65,
-    "win": false
   },
   {
     "survived": true,
@@ -253,25 +13,67 @@
   },
   {
     "survived": true,
-    "length": 44,
-    "turns": 299,
-    "win": true
-  },
-  {
-    "survived": true,
-    "length": 50,
+    "length": 31,
     "turns": 299,
     "win": true
   },
   {
     "survived": false,
     "length": 42,
-    "turns": 201,
+    "turns": 222,
     "win": false
   },
   {
     "survived": true,
-    "length": 48,
+    "length": 41,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 29,
+    "turns": 288,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 42,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 40,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 47,
+    "turns": 276,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 33,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 2,
+    "turns": 99,
+    "win": false
+  },
+  {
+    "survived": false,
+    "length": 43,
+    "turns": 264,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 45,
     "turns": 299,
     "win": true
   },
@@ -283,19 +85,217 @@
   },
   {
     "survived": true,
-    "length": 45,
+    "length": 46,
     "turns": 299,
     "win": true
   },
   {
     "survived": true,
-    "length": 43,
+    "length": 46,
     "turns": 299,
     "win": true
   },
   {
     "survived": true,
     "length": 30,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 39,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 51,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 52,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 35,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 52,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 25,
+    "turns": 225,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 34,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 38,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 39,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 35,
+    "turns": 261,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 34,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 48,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 52,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 41,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 54,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 45,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 2,
+    "turns": 99,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 49,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 46,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 47,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 30,
+    "turns": 264,
+    "win": false
+  },
+  {
+    "survived": false,
+    "length": 40,
+    "turns": 223,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 48,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 41,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 31,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 32,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 34,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 28,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 40,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 42,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": false,
+    "length": 40,
+    "turns": 293,
+    "win": false
+  },
+  {
+    "survived": true,
+    "length": 31,
+    "turns": 299,
+    "win": true
+  },
+  {
+    "survived": true,
+    "length": 46,
     "turns": 299,
     "win": true
   }
