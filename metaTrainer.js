@@ -1,4 +1,4 @@
-// === metaTrainer.js with per-mode best config saving ===
+// === metaTrainer.js with global best config saving and final batch_results output ===
 import fs from "fs";
 import { simulateMatches } from "./simulateMatch.js";
 
@@ -27,7 +27,7 @@ function saveConfig(path, config) {
 }
 
 function mutateConfig(config) {
-  const delta = () => (Math.random() * 0.6 - 0.3);
+  const delta = () => Math.random() * 0.6 - 0.3;
   return {
     foodWeight: +(config.foodWeight + delta()).toFixed(2),
     aggressionWeight: +(config.aggressionWeight + delta()).toFixed(2),
@@ -64,7 +64,7 @@ async function train(mode) {
 
     for (const config of candidates) {
       fs.writeFileSync("config.json", JSON.stringify(config));
-      const result = await simulateMatches(mode, MATCHES_PER_CONFIG);
+      const result = await simulateMatches(mode, MATCHES_PER_CONFIG, { silent: true });
       const score = fitness(result);
       if (score > topScore) {
         topScore = score;
@@ -76,7 +76,7 @@ async function train(mode) {
     const winRate = topResult.winRate.toFixed(1);
     const survival = topResult.survivalRate.toFixed(1);
     const tourneyWins = topResult.tournamentWinRate.toFixed(1);
-    const summary = `🎯 Gen ${gen} [${mode}]: WinRate ${winRate}% | Score ${topResult.averageScore} | Survival ${survival}% | Tourney Wins ${tourneyWins}% | Fitness ${topScore}`;
+    const summary = `🎯 Gen ${gen} [${mode}]: WinRate ${winRate}% | Score ${topResult.averageScore.toFixed(1)} | Survival ${survival}% | Tourney Wins ${tourneyWins}% | Fitness ${topScore.toFixed(1)}`;
     console.log(summary);
 
     if (topScore > bestFitness) {
@@ -86,10 +86,22 @@ async function train(mode) {
       saveConfig(bestPath, topCandidate);
     }
   }
+
+  // Final global evaluation for this mode's best config
+  fs.writeFileSync("config.json", JSON.stringify(bestConfig));
+  const finalResult = await simulateMatches(mode, 25, { silent: true });
+  const batchResults = Array.from({ length: 25 }, (_, i) => ({
+    match: i + 1,
+    score: finalResult.averageScore,
+    win: finalResult.winRate > 0,
+    survived: finalResult.survivalRate > 0
+  }));
+  fs.writeFileSync("batch_results.json", JSON.stringify(batchResults, null, 2));
 }
 
 async function main() {
-  const mode = process.argv[2];
+  const mode = process.env.MODE || process.argv[2];
+  console.log("🧠 Running metaTrainer with mode:", mode);
   if (!MODES.includes(mode)) {
     console.error("❌ Please pass a valid mode (balanced, aggressor, survivor, hunter)");
     process.exit(1);

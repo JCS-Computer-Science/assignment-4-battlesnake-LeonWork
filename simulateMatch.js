@@ -4,15 +4,8 @@ import { move as simulateMove } from "./moveLogic.js";
 const BOARD_WIDTH = 11;
 const BOARD_HEIGHT = 11;
 const MAX_TURNS = 300;
-const MATCH_COUNT = 100;
 const ENEMY_COUNT = 3;
 const FOOD_COUNT = 6;
-const SILENT = process.env.SILENT === "1";
-const CSV_LOG_PATH = "match_log.csv";
-
-if (!fs.existsSync(CSV_LOG_PATH)) {
-  fs.writeFileSync(CSV_LOG_PATH, "match,survived,win,score,reason,foodEaten,kills\n");
-}
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -99,7 +92,7 @@ function moveTo(pos, dir) {
   };
 }
 
-function simulateSingleMatch(matchIndex) {
+function simulateSingleMatch(index, silent = false) {
   const gameState = generateGameState();
   let alive = true;
   let reason = "maxTurns";
@@ -111,7 +104,6 @@ function simulateSingleMatch(matchIndex) {
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     gameState.turn = turn;
-
     const allSnakes = gameState.board.snakes;
     const moveMap = {};
 
@@ -123,7 +115,6 @@ function simulateSingleMatch(matchIndex) {
       moveMap[snake.id] = newHead;
     }
 
-    // Process moves
     for (const snake of allSnakes) {
       const newHead = moveMap[snake.id];
       snake.body.unshift(newHead);
@@ -141,7 +132,6 @@ function simulateSingleMatch(matchIndex) {
       }
     }
 
-    // Handle collisions and out-of-bounds
     const positions = {};
     for (const snake of allSnakes) {
       const head = snake.body[0];
@@ -153,7 +143,6 @@ function simulateSingleMatch(matchIndex) {
     for (const snake of allSnakes) {
       const head = snake.body[0];
       const key = `${head.x},${head.y}`;
-
       const collision =
         head.x < 0 || head.x >= BOARD_WIDTH ||
         head.y < 0 || head.y >= BOARD_HEIGHT ||
@@ -169,16 +158,13 @@ function simulateSingleMatch(matchIndex) {
       }
     }
 
-    // Metrics
     const head = gameState.you.body[0];
     const nearWall = head.x === 0 || head.y === 0 || head.x === BOARD_WIDTH - 1 || head.y === BOARD_HEIGHT - 1;
     if (!nearWall) avoidedWalls++;
     if (Math.abs(head.x - 5) + Math.abs(head.y - 5) <= 3) stayedNearCenter++;
     if (turn % 50 === 0 && turn > 0) longSurvivalBonus++;
 
-    // Remove all dead snakes
     gameState.board.snakes = gameState.board.snakes.filter(s => s.health > 0);
-
     if (!gameState.board.snakes.some(s => s.id === "you")) break;
   }
 
@@ -197,45 +183,43 @@ function simulateSingleMatch(matchIndex) {
     Math.floor(avoidedWalls / 10) * 3 +
     longSurvivalBonus * 15;
 
-  if (!SILENT) {
-    if (alive && onlyYouLeft) {
-      console.log(`[✅ WIN DETECTED] Match ${matchIndex} | Score: ${score}`);
-    } else if (alive && top2) {
-      console.log(`[⚠️ CLOSE CALL] Match ${matchIndex} | Final 2 but not winner`);
-    } else {
-      console.log(`[❌ NO WIN] Match ${matchIndex} | Reason: ${reason}`);
-    }
-  }
-
-  try {
-    fs.appendFileSync(CSV_LOG_PATH, `${matchIndex},${alive},${onlyYouLeft},${score},${reason},${foodEaten},${kills}\n`);
-  } catch (err) {
-    console.warn(`⚠️ Could not write to CSV: ${err.message}`);
-  }
-
   return {
-    match: matchIndex,
+    match: index,
     survived: alive,
-    turns: gameState.turn + 1,
-    reason,
-    foodEaten,
-    kills,
-    stayedNearCenter,
-    avoidedWalls,
-    longSurvivalBonus,
     win: alive && onlyYouLeft,
     score
   };
 }
 
-const results = Array.from({ length: MATCH_COUNT }, (_, i) => simulateSingleMatch(i + 1));
-const avgScore = (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(2);
-const survived = results.filter(r => r.survived).length;
+export async function simulateMatches(mode, matchCount, options = {}) {
+  const silent = options.silent ?? false;
+  let wins = 0, scoreSum = 0, survived = 0, tourneyWins = 0;
 
-if (!SILENT) {
-  console.log(`✅ Simulated ${MATCH_COUNT} matches`);
-  console.log(`🏁 Survived: ${survived}/${MATCH_COUNT}`);
-  console.log(`📊 Avg Score: ${avgScore}`);
+  for (let i = 0; i < matchCount; i++) {
+    const result = simulateSingleMatch(i + 1, silent);
+    scoreSum += result.score;
+    if (result.win) wins++;
+    if (result.survived) survived++;
+    if (result.win) tourneyWins++; // assume win = tournament win
+  }
+
+  return {
+    winRate: (wins / matchCount) * 100,
+    averageScore: scoreSum / matchCount,
+    survivalRate: (survived / matchCount) * 100,
+    tournamentWinRate: (tourneyWins / matchCount) * 100
+  };
 }
 
-fs.writeFileSync("batch_results.json", JSON.stringify(results, null, 2));
+// Runner block: allows standalone use
+if (process.argv[1].endsWith("simulateMatch.js")) {
+  const mode = process.argv[2] || "survivor";
+  const matchCount = parseInt(process.argv[3], 10) || 100;
+
+  simulateMatches(mode, matchCount).then(result => {
+    console.log(`\n✅ Simulated ${matchCount} matches as ${mode}`);
+    console.log(`🏁 Survived: ${result.survivalRate.toFixed(1)}%`);
+    console.log(`🎯 Win Rate: ${result.winRate.toFixed(1)}%`);
+    console.log(`📊 Avg Score: ${result.averageScore.toFixed(1)}`);
+  });
+}
