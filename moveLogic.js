@@ -271,3 +271,5 @@ if (prioritized.length > 0) {
 const nextMove = bestMove || safeDirections[Math.floor(Math.random() * safeDirections.length)];
 return { move: nextMove };
 }
+
+//work on code
