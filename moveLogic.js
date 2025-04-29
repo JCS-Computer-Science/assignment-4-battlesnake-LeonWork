@@ -70,7 +70,7 @@ export default function move(gameState) {
       if (yDis < 0) { targetMoves.down = true; } else if (yDis > 0) { targetMoves.up = true; }
   }
 
-  let isHungry = gameState.you.health < 20 || gameState.you.body.length % 2 != 0 || gameState.board.snakes.some(s => s.id !== gameState.you.id && s.body.length >= gameState.you.body.length - 2);
+  let isHungry = gameState.you.health < 80 || gameState.you.body.length % 2 != 0 || gameState.board.snakes.some(s => s.id !== gameState.you.id && s.body.length >= gameState.you.body.length - 2);
   //if (nearMid == false && gameState.you.health > 8 && gameState.you.body.length > 4) { isHungry = false; };
   if (isHungry && gameState.board.food.length > 0) {
       let closestFood = gameState.board.food[0];
@@ -271,4 +271,5 @@ if (prioritized.length > 0) {
 const nextMove = bestMove || safeDirections[Math.floor(Math.random() * safeDirections.length)];
 return { move: nextMove };
 }
+
 
