@@ -13,7 +13,6 @@ import express from 'express';
 import move from './moveLogic.js';
 
 const app = express();
-let board;
 app.use(express.json());
 const config = {
   apiversion: "1",
