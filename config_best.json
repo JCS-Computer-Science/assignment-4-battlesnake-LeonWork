@@ -1,9 +1,0 @@
-{
-  "foodWeight": 2.99,
-  "aggressionWeight": 1.02,
-  "trapAvoidanceWeight": 11.24,
-  "tailChaseWeight": 1.47,
-  "hazardAvoidanceWeight": 9.88,
-  "centerControlWeight": 4.9,
-  "minSpaceThreshold": 2.42
-}
