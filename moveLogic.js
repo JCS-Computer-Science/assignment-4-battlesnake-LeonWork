@@ -61,8 +61,8 @@ export default function move(game) {
 
     // Fallback when no valid path is found
     if (path.cost === Infinity || !path.path[1]) {
-        console.log("No Path, using Fallback Logic");
-        const fallbackMove = fallbackLogic(board, headNode, gameState);
+        console.log("No Path, using Enhanced Fallback Logic");
+        const fallbackMove = enhancedFallbackLogic(board, headNode, gameState);
         return { move: fallbackMove };
     }
 
@@ -76,9 +76,16 @@ export default function move(game) {
  * Fallback logic to calculate the best possible move in case no valid path is found.
  * Considers board boundaries, snake collisions, and maximizes available space.
  */
-function fallbackLogic(board, headNode, gameState) {
+/**
+ * Enhanced fallback logic to calculate the best possible move in case no valid path is found.
+ * Considers board boundaries, snake collisions, future tail positions, and maximizes available space.
+ */
+function enhancedFallbackLogic(board, headNode, gameState) {
     const directions = ['up', 'down', 'left', 'right'];
     const headPosition = board[headNode].position;
+    const snakeBodySet = new Set(
+        gameState.you.body.map(part => getNodeId(part, gameState))
+    );
 
     let bestMove = null;
     let maxSafeSpace = 0;
@@ -98,7 +105,11 @@ function fallbackLogic(board, headNode, gameState) {
 
         // Check if the position is valid and not occupied
         const nodeId = getNodeId(nextPosition, gameState);
-        if (nodeId !== undefined && !isOccupied(nodeId, gameState)) {
+        if (
+            nodeId !== undefined &&
+            !snakeBodySet.has(nodeId) && // Avoid self-collision
+            !isOccupied(nodeId, gameState)
+        ) {
             // Calculate available space using BFS
             const safeSpace = bfs(board, nodeId);
 
