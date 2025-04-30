@@ -1,88 +1,125 @@
-
-export default function move(game){
+export default function move(game) {
     const gameState = game;
     const myHead = gameState.you.body[0];
     const headNode = getNodeId(myHead, gameState);
     let board = {};
 
-    //console.log(gameState.board.snakes);
-
-    //INIT BOARD
+    // Initialize board
     let c = 0;
-    for(let i=0; i<gameState.board.height; i++){
-        for(let j=0; j<gameState.board.width; j++){
-            board[c] = {position:{x:j, y:i}, connections:[], id:c};
+    for (let i = 0; i < gameState.board.height; i++) {
+        for (let j = 0; j < gameState.board.width; j++) {
+            board[c] = { position: { x: j, y: i }, connections: [], id: c };
             c++;
         }
     }
     board = connectNodes(gameState, board);
 
-    let state;
-    let pathfindTo;
+    let pathfindTo = nearestFood(gameState, board, myHead, gameState.you.body[0]);
 
-    let longestLength = 0;
-    for(let i = 0; i < gameState.board.snakes.length; i++){
-        if(gameState.board.snakes[i].id != gameState.you.id){
-            if (gameState.board.snakes[i].length > longestLength){
-                longestLength = gameState.board.snakes[i].length
-            }
-        }
-    }
+    const longestLength = Math.max(
+        ...gameState.board.snakes
+            .filter(snake => snake.id !== gameState.you.id)
+            .map(snake => snake.length),
+        0
+    );
 
-    pathfindTo = nearestFood(gameState, board, myHead, gameState.you.body[0]);
-
-    if(gameState.you.health > 40 && gameState.you.body.length > longestLength + 1){
-        console.log("Hunting")
+    if (gameState.you.health > 40 && gameState.you.body.length > longestLength + 1) {
+        console.log("Hunting");
         pathfindTo = huntSnake(gameState, board, headNode);
     }
 
     pathfindTo = flood(pathfindTo, headNode, board, gameState, myHead);
 
-    if(checkEnclosure(board, headNode, gameState).turns == 0){
+    if (checkEnclosure(board, headNode, gameState).turns === 0) {
         pathfindTo = findClosestOpening(gameState, board, headNode).path;
     }
 
-    if(checkEnclosure(board, headNode, gameState) && !aStar(board, headNode, pathfindTo).path[1]){
+    if (
+        checkEnclosure(board, headNode, gameState) &&
+        !aStar(board, headNode, pathfindTo).path[1]
+    ) {
         console.log("Enclosed, Closest Opening:");
         console.log(findClosestOpening(gameState, board, headNode));
-        let pathToNearest = findClosestOpening(gameState, board, headNode).path[1]
-
+        let pathToNearest = findClosestOpening(gameState, board, headNode).path[1];
 
         pathfindTo = pathToNearest;
     }
 
     let path = aStar(board, headNode, pathfindTo);
 
-    //console.log(path);
-    
-    if(path.cost > 50){
+    // Check for unsafe paths
+    if (path.cost > 50) {
         console.log("Unsafe, checking moves: " + board[headNode].connections.length);
-        for(let i = 0; i < board[headNode].connections.length; i++){
+        for (let i = 0; i < board[headNode].connections.length; i++) {
             let newPath = aStar(board, headNode, board[headNode].connections[i][0]);
-            console.log(newPath)
-            if(newPath.cost < 50){
-                //console.log("through")
+            if (newPath.cost < 50) {
                 path = newPath;
                 break;
             }
         }
     }
 
-    if(path.cost == Infinity){
-        console.log("No Path, Closest Opening:")
-        console.log(findClosestOpening(gameState, board, headNode));
-        let path1 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[0][0]);
-        let path2 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[1][0]);
-
-
-        path = path1.path[1] ? path1 : path2;
+    // Fallback when no valid path is found
+    if (path.cost === Infinity || !path.path[1]) {
+        console.log("No Path, using Fallback Logic");
+        const fallbackMove = fallbackLogic(board, headNode, gameState);
+        return { move: fallbackMove };
     }
-    
+
+    // Calculate next move
     let nextMove = calculateNextMove(path.path[1], board, headNode);
-    
-    console.log(`MOVE ${gameState.turn}: ${nextMove}`)
+    console.log(`MOVE ${gameState.turn}: ${nextMove}`);
     return { move: nextMove };
 }
+
+/**
+ * Fallback logic to calculate the best possible move in case no valid path is found.
+ * Considers board boundaries, snake collisions, and maximizes available space.
+ */
+function fallbackLogic(board, headNode, gameState) {
+    const directions = ['up', 'down', 'left', 'right'];
+    const headPosition = board[headNode].position;
+
+    let bestMove = null;
+    let maxSafeSpace = 0;
+
+    // Evaluate all possible moves
+    directions.forEach(direction => {
+        let nextPosition;
+        if (direction === 'up') {
+            nextPosition = { x: headPosition.x, y: headPosition.y - 1 };
+        } else if (direction === 'down') {
+            nextPosition = { x: headPosition.x, y: headPosition.y + 1 };
+        } else if (direction === 'left') {
+            nextPosition = { x: headPosition.x - 1, y: headPosition.y };
+        } else if (direction === 'right') {
+            nextPosition = { x: headPosition.x + 1, y: headPosition.y };
+        }
+
+        // Check if the position is valid and not occupied
+        const nodeId = getNodeId(nextPosition, gameState);
+        if (nodeId !== undefined && !isOccupied(nodeId, gameState)) {
+            // Calculate available space using BFS
+            const safeSpace = bfs(board, nodeId);
+
+            // Update the best move if this move provides more safe space
+            if (safeSpace > maxSafeSpace) {
+                maxSafeSpace = safeSpace;
+                bestMove = direction;
+            }
+        }
+    });
+
+    // If no best move is found, default to 'up' (or any other defined behavior)
+    if (!bestMove) {
+        console.log("No safe moves found, defaulting to 'up'");
+        return 'up';
+    }
+
+    console.log(`Best fallback move: ${bestMove} with safe space: ${maxSafeSpace}`);
+    return bestMove;
+}
+
 
 //BUILD GRAPH
 //
@@ -462,3 +499,4 @@ function calculateNextMove(path, board, headNode){
         return "up"
     }
 }
+
