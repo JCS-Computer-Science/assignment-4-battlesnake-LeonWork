@@ -10,9 +10,10 @@
 // To get you started we've included code to prevent your Battlesnake from moving backwards.
 // For more info see docs.battlesnake.com
 import express from 'express';
-import move from './moveLogic.js'
+import move from './moveLogic.js';
 
 const app = express();
+let board;
 app.use(express.json());
 const config = {
   apiversion: "1",
