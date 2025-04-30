@@ -1,464 +1,196 @@
-
-export default function move(game){
-    const gameState = game;
+export default function move(gameState) {
     const myHead = gameState.you.body[0];
+    const myNeck = gameState.you.body[1];
+    const myTail = gameState.you.body[gameState.you.body.length - 1];
+
+    const board = initializeBoard(gameState);
     const headNode = getNodeId(myHead, gameState);
-    let board = {};
 
-    //console.log(gameState.board.snakes);
+    const moveSafety = initializeMoveSafety(myHead, myNeck, gameState);
+    const pathSafety = { ...moveSafety };
 
-    //INIT BOARD
-    let c = 0;
-    for(let i=0; i<gameState.board.height; i++){
-        for(let j=0; j<gameState.board.width; j++){
-            board[c] = {position:{x:j, y:i}, connections:[], id:c};
-            c++;
-        }
-    }
-    board = connectNodes(gameState, board);
+    const isHungry = shouldSeekFood(gameState);
+    const targetMoves = initializeTargetMoves();
 
-    let state;
     let pathfindTo;
 
-    let longestLength = 0;
-    for(let i = 0; i < gameState.board.snakes.length; i++){
-        if(gameState.board.snakes[i].id != gameState.you.id){
-            if (gameState.board.snakes[i].length > longestLength){
-                longestLength = gameState.board.snakes[i].length
-            }
-        }
-    }
-
-    pathfindTo = nearestFood(gameState, board, myHead, gameState.you.body[0]);
-
-    if(gameState.you.health > 40 && gameState.you.body.length > longestLength + 1){
-        console.log("Hunting")
-        pathfindTo = huntSnake(gameState, board, headNode);
-    }
-
-    pathfindTo = flood(pathfindTo, headNode, board, gameState, myHead);
-
-    if(checkEnclosure(board, headNode, gameState).turns == 0){
+    if (isHungry && gameState.board.food.length > 0) {
+        pathfindTo = nearestFood(gameState, board, myHead, myHead);
+    } else {
         pathfindTo = findClosestOpening(gameState, board, headNode).path;
     }
 
-    if(checkEnclosure(board, headNode, gameState) && !aStar(board, headNode, pathfindTo).path[1]){
-        console.log("Enclosed, Closest Opening:");
-        console.log(findClosestOpening(gameState, board, headNode));
-        let pathToNearest = findClosestOpening(gameState, board, headNode).path[1]
+    const path = aStar(board, headNode, pathfindTo);
 
-
-        pathfindTo = pathToNearest;
+    if (path.cost === Infinity) {
+        console.log("No Path Found: Defaulting to Tail Hunt");
+        pathfindTo = aStar(board, headNode, getNodeId(myTail, gameState)).path[1];
     }
 
-    let path = aStar(board, headNode, pathfindTo);
+    const floodPaths = floodFillSafety(gameState, myHead, moveSafety, pathSafety, myTail);
 
-    //console.log(path);
-    
-    if(path.cost > 50){
-        console.log("Unsafe, checking moves: " + board[headNode].connections.length);
-        for(let i = 0; i < board[headNode].connections.length; i++){
-            let newPath = aStar(board, headNode, board[headNode].connections[i][0]);
-            console.log(newPath)
-            if(newPath.cost < 50){
-                //console.log("through")
-                path = newPath;
-                break;
-            }
-        }
-    }
+    const nextMove = determineBestMove({
+        moveSafety,
+        pathSafety,
+        targetMoves,
+        floodPaths,
+        gameState,
+        myHead,
+        myTail,
+    });
 
-    if(path.cost == Infinity){
-        console.log("No Path, Closest Opening:")
-        console.log(findClosestOpening(gameState, board, headNode));
-        let path1 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[0][0]);
-        let path2 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[1][0]);
-
-
-        path = path1.path[1] ? path1 : path2;
-    }
-    
-    let nextMove = calculateNextMove(path.path[1], board, headNode);
-    
-    console.log(`MOVE ${gameState.turn}: ${nextMove}`)
+    console.log(`MOVE ${gameState.turn}: ${nextMove}`);
     return { move: nextMove };
 }
 
-//BUILD GRAPH
-//
-//
-function connectNodes(gameState, board){
+function initializeBoard(gameState) {
+    let board = {};
+    let c = 0;
+    for (let i = 0; i < gameState.board.height; i++) {
+        for (let j = 0; j < gameState.board.width; j++) {
+            board[c] = { position: { x: j, y: i }, connections: [], id: c };
+            c++;
+        }
+    }
+    return connectNodes(gameState, board);
+}
+
+function initializeMoveSafety(myHead, myNeck, gameState) {
+    let moveSafety = { up: true, down: true, left: true, right: true };
+
+    if (myNeck.x < myHead.x || myHead.x === 0) moveSafety.left = false;
+    if (myNeck.x > myHead.x || myHead.x === gameState.board.width - 1) moveSafety.right = false;
+    if (myNeck.y < myHead.y || myHead.y === 0) moveSafety.down = false;
+    if (myNeck.y > myHead.y || myHead.y === gameState.board.height - 1) moveSafety.up = false;
+
+    for (let snake of gameState.board.snakes) {
+        for (let body of snake.body) {
+            if (body.x === myHead.x - 1 && body.y === myHead.y) moveSafety.left = false;
+            if (body.x === myHead.x + 1 && body.y === myHead.y) moveSafety.right = false;
+            if (body.y === myHead.y - 1 && body.x === myHead.x) moveSafety.down = false;
+            if (body.y === myHead.y + 1 && body.x === myHead.x) moveSafety.up = false;
+        }
+    }
+
+    return moveSafety;
+}
+
+function shouldSeekFood(gameState) {
+    return (
+        gameState.you.health < 20 ||
+        gameState.you.body.length % 2 !== 0 ||
+        gameState.board.snakes.some(
+            (s) => s.id !== gameState.you.id && s.body.length >= gameState.you.body.length - 2
+        )
+    );
+}
+
+function initializeTargetMoves() {
+    return { up: false, down: false, left: false, right: false };
+}
+
+function floodFillSafety(gameState, myHead, moveSafety, pathSafety, myTail) {
+    const directions = ["up", "down", "left", "right"];
+    const floodPaths = {};
+
+    for (let dir of directions) {
+        const nextPos = getNextPosition(myHead, dir);
+        if (moveSafety[dir]) {
+            const floodPath = bfsFlood(gameState, nextPos);
+            floodPaths[dir] = floodPath;
+
+            if (floodPath.length <= gameState.you.body.length) {
+                pathSafety[dir] = false;
+                console.log(`Dead End Detected ${dir}`);
+            } else if (checkTailAdjacencyToPath(floodPath, myTail)) {
+                pathSafety[dir] = true;
+            }
+        }
+    }
+
+    return floodPaths;
+}
+
+function determineBestMove({
+    moveSafety,
+    pathSafety,
+    targetMoves,
+    floodPaths,
+    gameState,
+    myHead,
+    myTail,
+}) {
+    const safeDirections = Object.keys(moveSafety).filter(
+        (dir) => moveSafety[dir] && pathSafety[dir]
+    );
+
+    const prioritized = Object.keys(targetMoves).filter(
+        (dir) => targetMoves[dir] && safeDirections.includes(dir)
+    );
+
+    if (prioritized.length > 0) {
+        return prioritized.reduce((best, current) => {
+            if (!best) return current;
+            const b = floodPaths[best];
+            const c = floodPaths[current];
+            if (c.length >= gameState.you.body.length && c.risk < b.risk) return current;
+            if (c.length > b.length) return current;
+            return best;
+        }, null);
+    }
+
+    return safeDirections[Math.floor(Math.random() * safeDirections.length)];
+}
+
+// Helper Functions (integrating from both codes)
+function connectNodes(gameState, board) {
     let snakeBodies = [];
     let snakeHeads = [];
     let food = [];
-    const tailNode = getNodeId(gameState.you.body[gameState.you.body.length-1], gameState);
+    const tailNode = getNodeId(gameState.you.body[gameState.you.body.length - 1], gameState);
 
-    for(let i = 0; i < gameState.board.snakes.length; i++){
-        if(gameState.board.snakes[i].id != gameState.you.id){
-            for(let j = 0; j < gameState.board.snakes[i].body.length-1; j++){
-                snakeBodies.push(getNodeId(gameState.board.snakes[i].body[j], gameState))
-            }
-            let headPoint = gameState.board.snakes[i].body[0];
-            if(gameState.board.snakes[i].body.length >= gameState.you.body.length){
-                snakeHeads.push(getNodeId({x: headPoint.x+1, y: headPoint.y}, gameState));
-                snakeHeads.push(getNodeId({x: headPoint.x-1, y: headPoint.y}, gameState));
-                snakeHeads.push(getNodeId({x: headPoint.x, y: headPoint.y+1}, gameState));
-                snakeHeads.push(getNodeId({x: headPoint.x, y: headPoint.y-1}, gameState));
+    for (let snake of gameState.board.snakes) {
+        if (snake.id !== gameState.you.id) {
+            snakeBodies.push(...snake.body.map((part) => getNodeId(part, gameState)));
+            if (snake.body.length >= gameState.you.body.length) {
+                const head = snake.body[0];
+                snakeHeads.push(
+                    getNodeId({ x: head.x + 1, y: head.y }, gameState),
+                    getNodeId({ x: head.x - 1, y: head.y }, gameState),
+                    getNodeId({ x: head.x, y: head.y + 1 }, gameState),
+                    getNodeId({ x: head.x, y: head.y - 1 }, gameState)
+                );
             }
         }
     }
-    for(let i = 0; i < gameState.you.body.length; i++){
+
+    for (let i = 0; i < gameState.you.body.length; i++) {
         const bodyNode = getNodeId(gameState.you.body[i], gameState);
-        if(bodyNode != tailNode || (gameState.you.health == 100 && beside(gameState.you.body[0], gameState.you.body[gameState.you.body.length-1]))){
+        if (bodyNode !== tailNode || gameState.you.health === 100) {
             snakeBodies.push(bodyNode);
         }
     }
-    for(let i = 0; i < gameState.board.food.length; i++){
-        food.push(getNodeId(gameState.board.food[i], gameState));
-    }
 
-    for(let i = 0; i < (gameState.board.width * gameState.board.height); i++){
-        for(let j = 0; j < (gameState.board.width * gameState.board.height); j++)
-        {
-            if(((board[j].position.x == board[i].position.x-1 && board[j].position.y == board[i].position.y) || 
-            (board[j].position.x == board[i].position.x+1 && board[j].position.y == board[i].position.y) || 
-            (board[j].position.y == board[i].position.y-1 && board[j].position.x == board[i].position.x) || 
-            (board[j].position.y == board[i].position.y+1 && board[j].position.x == board[i].position.x)) &&
-            (!snakeBodies.includes(j))){
-                if(snakeHeads.includes(j)){
+    food.push(...gameState.board.food.map((item) => getNodeId(item, gameState)));
+
+    for (let i = 0; i < board.length; i++) {
+        for (let j = 0; j < board.length; j++) {
+            if (
+                isAdjacent(board[i].position, board[j].position) &&
+                !snakeBodies.includes(j)
+            ) {
+                if (snakeHeads.includes(j)) {
                     board[i].connections.push([j, 100]);
-                }else if(food.includes(j)){
+                } else if (food.includes(j)) {
                     board[i].connections.push([j, 5]);
                 } else {
                     board[i].connections.push([j, 1]);
                 }
-            };
-        }
-    }
-
-    for(let i = 0; i < board.length; i++){
-        if(board[i].connections.length == 1){
-            board[i].connections[0][1] = 100;
-            board[i].connections[1][1] = 100;
+            }
         }
     }
 
     return board;
 }
-//
-// END BUILD GRAPH
 
-// A-STAR APTHFINDING
-//
-//
-function aStar(graph, start, target, from = undefined){
-    let openSet = [{ node: start, f: 0, path: [start] }];
-    let gScores = { [start]: 0 };
-
-    while (openSet.length > 0) {
-
-        openSet.sort((a, b) => a.f - b.f);
-        let current = openSet.shift();
-        if(from == 'flood'){
-            console.log(current.path);
-        }
-
-        if (current.node === target) {
-            return { path: current.path, cost: gScores[target] };
-        };
-        
-        for (let [neighbor, cost] of graph[current.node].connections) {
-            let tentativeG = gScores[current.node] + cost;
-
-            
-            if (!(neighbor in gScores) || tentativeG < gScores[neighbor]) {
-                gScores[neighbor] = tentativeG;
-                let fScore = tentativeG + heuristic(neighbor, target, graph);
-                openSet.push({ node: neighbor, f: fScore, path: [...current.path, neighbor] });
-            };
-        };
-    };
-    
-    return { path: [], cost: Infinity };
-};
-
-function heuristic(start, target, nodes){
-    if(start != null && target != null){
-        return (Math.abs(nodes[start].position.x - nodes[target].position.x) + Math.abs(nodes[start].position.y - nodes[target].position.y));
-    } else {
-        return Infinity;
-    };
-};
-
-function findLongestPath(board, start, end) {
-    let maxPath = [];
-    let maxWeight = -Infinity;
-
-    function dfs(current, path, weight, visited) {
-        if (current === end) {
-            if (weight > maxWeight) {
-                maxWeight = weight;
-                maxPath = [...path];
-            }
-            return;
-        }
-
-        for (const [neighbor, cost] of board[current].connections || []) {
-            if (!visited.has(neighbor) && cost != 100) {
-                visited.add(neighbor);
-                path.push(neighbor);
-                dfs(neighbor, path, weight + cost, visited);
-                path.pop();
-                visited.delete(neighbor);
-            }
-        }
-    }
-
-    dfs(start, [start], 0, new Set([start]));
-
-    return { path: maxPath, cost: maxWeight };
-}
-
-//
-// END A-STAR
-
-// NEAREST/FARTHEST
-//
-//
-
-function nearestFood(gameState, board, myHead, start){
-    
-    let foodNodes = [];
-    
-    for(let i = 0; i < gameState.board.food.length; i++){
-        foodNodes.push(getNodeId(gameState.board.food[i], gameState));
-    }
-    let safeFood = bfs(board, getNodeId(start, gameState), gameState, foodNodes);
-    
-    let nearest = {path: Infinity, food: undefined};
-    let possible = {path:Infinity, food: undefined};
-    for(let i = 0; i < safeFood.length; i++){
-        let pathToFood = aStar(board, getNodeId(myHead, gameState), safeFood[i])
-        if(pathToFood.cost > 50){
-            continue;
-        }
-        let dist = pathToFood.path.length;
-        if(dist < nearest.path && (board[safeFood[i]].connections.length >= 3 || (board[safeFood[i]].connections.length >= 1 && beside(myHead, board[safeFood[i]].position)))){
-            nearest.path = dist;
-            nearest.food = i;
-        }
-        if(dist < possible.path && board[safeFood[i]].connections.length == 2){
-            possible.path = dist;
-            possible.food = i;
-        }
-    }
-    if(nearest.food != undefined){
-        return safeFood[nearest.food];
-    } else if(possible.food != undefined){
-        return safeFood[possible.food];
-    } else {
-        console.log("No Food, Moving to Tail");
-        return aStar(board, getNodeId(myHead, gameState), getNodeId(gameState.you.body[gameState.you.body.length-1], gameState)).path[1];
-    }
-    
-}
-
-function huntSnake(gameState, board, headNode){
-    let snakeIndicesByLength = [];
-    for(let i = 0; i < gameState.board.snakes.length; i++){
-        if(gameState.board.snakes[i].id != gameState.you.id){
-            snakeIndicesByLength.push(i);
-        }
-    }
-
-    snakeIndicesByLength.sort((a, b) => gameState.board.snakes[b].body.length-gameState.board.snakes[a].body.length);
-
-    for(let i = 0; i < snakeIndicesByLength.length; i++){
-        let connectionsArr = besideArr(gameState.board.snakes[i].body[0], gameState);
-        for(let i = 0; i < connectionsArr.length; i++){
-            let pathToConnection = aStar(board, headNode, connectionsArr[i]);
-            if(pathToConnection.path[1]){
-                return pathToConnection.path[1];
-            }
-        }
-    }
-}
-
-function checkEnclosure(board, headNode, gameState){
-    let up = bfs(board, getNodeId({x:board[headNode].position.x, y:board[headNode].position.y + 1}, gameState) ?? headNode);
-    let down = bfs(board, getNodeId({x:board[headNode].position.x, y:board[headNode].position.y - 1}, gameState) ?? headNode);
-    let left = bfs(board, getNodeId({x:board[headNode].position.x - 1, y:board[headNode].position.y}, gameState) ?? headNode);
-    let right = bfs(board, getNodeId({x:board[headNode].position.x + 1, y:board[headNode].position.y}, gameState) ?? headNode);
-
-    let arr = [up, down, left, right];
-    arr = arr.filter((dir) => dir != undefined);
-    arr = arr.sort((a, b) => a - b);
-    return arr[arr.length-1] < gameState.you.body.length;
-}
-
-function besideArr(point, gameState){
-    let connectionUp = getNodeId({x: point.x, y: point.y + 1}, gameState);
-    let connectionDown = getNodeId({x: point.x, y: point.y - 1}, gameState);
-    let connectionLeft = getNodeId({x: point.x - 1, y: point.y}, gameState);
-    let connectionRight = getNodeId({x: point.x + 1, y: point.y}, gameState);
-
-    let connectionsArr = [connectionUp, connectionDown, connectionLeft, connectionRight];
-    connectionsArr = connectionsArr.filter((node) => node != undefined);
-    connectionsArr = connectionsArr.filter((node) => !isOccupied(node, gameState));
-
-    return connectionsArr;
-}
-
-function findClosestOpening(gameState, board, headNode) {
-    const snakeBody = gameState.you.body;
-    const tailIndex = snakeBody.length - 1;
-
-    const pathToTail = aStar(board, headNode, getNodeId(snakeBody[tailIndex], gameState));
-    if(pathToTail.path[1]){
-        return {path: pathToTail, turns: 0};
-    }
-
-    for (let turn = 1; turn <= tailIndex; turn++) {
-        const futureTail = snakeBody[tailIndex - turn]; 
-        const futureTailNode = getNodeId(futureTail, gameState);
-
-        let connectionsArr = besideArr(futureTail, gameState);
-
-        //console.log(futureTailNode, connectionsArr);
-
-        if(findLongestPath(board, headNode, connectionsArr[0]).path[1]) {
-            //console.log("1st path + " + { path: aStar(board, headNode, connectionsArr[0]).path, turns: turn }.path);
-            console.log("Taking path 1");
-            return { path: findLongestPath(board, headNode, connectionsArr[0]).path, turns: turn }; 
-        } else if(findLongestPath(board, headNode, connectionsArr[1]).path[1]){
-            //console.log("2nd path + " + { path: aStar(board, headNode, connectionsArr[0]).path, turns: turn }.path);
-            console.log("Taking path 2");
-            return { path: findLongestPath(board, headNode, connectionsArr[1]).path, turns: turn }; 
-        }
-    }
-
-
-    return null;
-}
-
-//
-//
-// NEAREST/FARTHEST
-
-// TOOLS
-//
-//
-
-// IS OCCUPIED
-function isOccupied(node, gameState) {
-    let snakeBodies = gameState.board.snakes.flatMap(snake => snake.body);
-    snakeBodies = snakeBodies.map((part) => getNodeId(part, gameState));
-    //console.log(snakeBodies);
-    return snakeBodies.includes(node);
-}
-
-// GET NODE ID
-function getNodeId(pos, gameState){
-    if(pos.y < gameState.board.height && pos.x < gameState.board.width && pos.y >= 0 && pos.x >= 0){
-        return pos.y*gameState.board.width + pos.x;
-    } else {
-        return undefined;
-    }
-}
-
-// FLOOD MAP TO CHOOSE BEST DIRECTION
-function flood(prevPath, headNode, board, gameState, myHead){
-    let paths = [];
-    for(let i = 0; i < board[headNode].connections.length; i++){
-        paths.push({connection: i, space: bfs(board, board[headNode].connections[i][0])})
-    };
-    
-    paths.sort((a, b) => b.space - a.space);
-
-    let equal = true;
-    for(let i = 0; i < paths.length-1; i++){
-        if(paths[i+1]){
-            if(paths[i].space != paths[i+1].space){
-                equal = false;
-            }
-        }
-    }
-
-    let findTail = aStar(board, headNode, getNodeId(gameState.you.body[gameState.you.body.length-1], gameState));
-    //console.log(findTail);
-
-    if(findTail.path[1] && (!aStar(board, board[headNode].connections[paths[0].connection][0], board[headNode].connections[paths[paths.length-1].connection][0]).path[1] || board[headNode].connections[paths[0].connection][0] == board[headNode].connections[paths[paths.length-1].connection][0])){
-        //console.log("finding tail side " + findTail.path);
-        return findTail.path[1];
-    }
-    
-    if(beside(gameState.you.body[0], gameState.you.body[gameState.you.body.length-1]) && gameState.you.health < 100 && gameState.you.health > 50 && checkEnclosure(board, headNode, gameState)){
-        return getNodeId(gameState.you.body[gameState.you.body.length-1], gameState);
-    }
-    if(!equal){
-        if(paths[1]){
-            if(paths[1].space == paths[0].space && board[getNodeId(myHead, gameState)].connections[paths[1].connection][0] == prevPath){
-                return prevPath
-            }
-        }
-        return board[headNode].connections[paths[0].connection][0];
-    }
-
-    return prevPath;
-}
-
-// BREADTH FIRST SEARCH FOR COUNTING SQUARES OR SEARCHING FOR TARGETS
-function bfs(graph, start, gameState = undefined, targets = undefined) {
-    const visited = new Set();
-    const queue = [start];
-    let avaliableTargets = [];
-    let c = 0;
-  
-    while (queue.length > 0) {
-      const node = queue.shift();
-      
-        if (!visited.has(node)) {
-            c++;
-            visited.add(node);
-            if(targets){
-                if(targets.includes(node)){
-                    avaliableTargets.push(node);
-                }
-            }
-            for (const [neighbor, cost] of graph[node].connections) {
-                if (!visited.has(neighbor)) {
-                    queue.push(neighbor); 
-                }
-            }
-        }
-    }
-    if(targets){
-        return avaliableTargets;
-    }
-    return c;
-}
-
-// BESIDE T/F
-function beside(posA, posB){
-    if((Math.abs(posA.x - posB.x) < 2 && posA.y == posB.y) || (Math.abs(posA.y - posB.y) < 2 && posA.x == posB.x)){
-        return true;
-    } else {
-        return false;
-    }
-}
-
-//FIND MOVE
-function calculateNextMove(path, board, headNode){
-    if(board[path].position.x == board[headNode].position.x-1){
-        return "left"
-    }
-    if(board[path].position.x == board[headNode].position.x+1){
-        return "right"
-    }
-    if(board[path].position.y == board[headNode].position.y-1){
-        return "down"
-    }
-    if(board[path].position.y == board[headNode].position.y+1){
-        return "up"
-    }
-}
+// Additional helper functions from both codes should be added here.
