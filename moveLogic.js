@@ -11,12 +11,7 @@ function move(gameState) {
   const board = gameState.board;
 
   const possibleMoves = ["up", "down", "left", "right"];
-  const scores = {
-    up: 0,
-    down: 0,
-    left: 0,
-    right: 0
-  };
+  const scores = {};
 
   for (const move of possibleMoves) {
     const newPos = getNewPosition(myHead, move);
@@ -35,13 +30,13 @@ function move(gameState) {
       score += CONFIG.foodWeight / (dist + 1);
     }
 
-    // Trap detection (available space)
+    // Trap detection
     const space = floodFill(newPos, board, gameState);
     if (space < CONFIG.minSpaceThreshold) {
       score -= CONFIG.trapAvoidanceWeight;
     }
 
-    // Hazard penalty (Royale)
+    // Hazard penalty
     if (isInHazard(newPos, board)) {
       score -= CONFIG.hazardAvoidanceWeight;
     }
@@ -60,14 +55,27 @@ function move(gameState) {
     scores[move] = score;
   }
 
-  const bestMove = Object.entries(scores).reduce((best, current) =>
+  // Get best move or fallback
+  let bestMove = Object.entries(scores).reduce((best, current) =>
     current[1] > best[1] ? current : best
   )[0];
+
+  const bestPos = getNewPosition(myHead, bestMove);
+
+  // Fallback if all are bad or move is still unsafe
+  if (isOutOfBounds(bestPos, board) || isOccupied(bestPos, gameState)) {
+    const fallback = possibleMoves.find(m => {
+      const pos = getNewPosition(myHead, m);
+      return !isOutOfBounds(pos, board) && !isOccupied(pos, gameState);
+    });
+    console.log(`⚠️ Unsafe best move (${bestMove}), fallback to ${fallback}`);
+    bestMove = fallback || "down"; // default last resort
+  }
 
   return { move: bestMove };
 }
 
-// Helpers
+// --- Helpers ---
 function getNewPosition(pos, dir) {
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   return { x: pos.x + delta[dir][0], y: pos.y + delta[dir][1] };
@@ -120,5 +128,4 @@ function floodFill(start, board, gameState) {
   return count;
 }
 
-// ✅ Fix: use default export
 export default move;
