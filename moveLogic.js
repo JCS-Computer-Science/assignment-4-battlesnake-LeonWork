@@ -118,7 +118,17 @@ export default function move(gameState) {
       return gameState.board.hazards?.some(hz => hz.x === pos.x && hz.y === pos.y) || false;
   }
   function hazardPenalty(pos) {
-      return isHazard(pos) ? 15 : 0; // penalty added if stepping into hazard
+      if (!isHazard(pos)) return 0;
+  
+      const distanceToCenter = Math.abs(pos.x - Math.floor(gameState.board.width / 2)) + Math.abs(pos.y - Math.floor(gameState.board.height / 2));
+      const trappedNearEdge = pos.x === 0 || pos.y === 0 || pos.x === gameState.board.width - 1 || pos.y === gameState.board.height - 1;
+  
+      let penalty = 8; // base penalty
+      if (gameState.you.health < 30) penalty += 10;
+      if (trappedNearEdge) penalty += 5;
+      if (distanceToCenter > 4) penalty += 3;
+  
+      return penalty;
   }
   
   // Queue-based flood fill
