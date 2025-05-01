@@ -78,6 +78,16 @@ export default function move(gameState) {
     //if (nearMid == false && gameState.you.health > 8 && gameState.you.body.length > 4) { isHungry = false; };
     if (isHungry && gameState.board.food.length > 0) {
         let closestFood = gameState.board.food[0];
+  
+      // Filter food that is accessible or near enough hazard (calculated risk)
+      const viableFood = gameState.board.food.filter(food => {
+          const dist = Math.abs(food.x - myHead.x) + Math.abs(food.y - myHead.y);
+          const hazard = isHazard(food);
+          if (!hazard) return true;
+          return dist <= 2 && gameState.you.health > 25; // permit short hazard reach if not too risky
+      });
+      if (viableFood.length > 0) gameState.board.food = viableFood;
+  
         let targetFood = {
             distanceTotal: Math.abs(closestFood.x - myHead.x) + Math.abs(closestFood.y - myHead.y),
             distanceX: closestFood.x - myHead.x,
@@ -106,6 +116,9 @@ export default function move(gameState) {
     
   function isHazard(pos) {
       return gameState.board.hazards?.some(hz => hz.x === pos.x && hz.y === pos.y) || false;
+  }
+  function hazardPenalty(pos) {
+      return isHazard(pos) ? 15 : 0; // penalty added if stepping into hazard
   }
   
   // Queue-based flood fill
