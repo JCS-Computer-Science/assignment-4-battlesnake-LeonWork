@@ -4053,9 +4053,6 @@ export default function move(game){
       }
   }
 
-  //console.log(gameState.board.snakes);
-
-  //INIT BOARD
   let c = 0;
   for(let i=0; i<gameState.board.height; i++){
       for(let j=0; j<gameState.board.width; j++){
@@ -4109,7 +4106,7 @@ export default function move(game){
   
   
   if(path.cost > 19){
-      console.log("Unsafe, checking moves: " + board[headNode].connections.length);
+      console.log("checking moves: " + board[headNode].connections.length);
       let lowestCost = {path: [], cost: Infinity};
       for(let i = 0; i < board[headNode].connections.length; i++){
           let newPath = aStar(board, headNode, board[headNode].connections[i][0]);
@@ -4126,7 +4123,7 @@ export default function move(game){
   }
   
   if(path.cost == Infinity){
-      console.log("No Path, Closest Opening:")
+      console.log("Closest Opening:")
       console.log(findClosestOpening(gameState, board, headNode));
       let path1 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[0][0]);
       let path2 = aStar(board, headNode, board[findClosestOpening(gameState, board, headNode).path[1]].connections[1][0]);
@@ -4141,9 +4138,6 @@ export default function move(game){
   return { move: nextMove };
 }
 
-//BUILD GRAPH
-//
-//
 function connectNodes(gameState, board){
   let snakeBodies = [];
   let snakeHeads = [];
@@ -4222,12 +4216,6 @@ function connectNodes(gameState, board){
 
   return board;
 }
-//
-// END BUILD GRAPH
-
-// A-STAR APTHFINDING
-//
-//
 function aStar(graph, start, target, from = undefined){
   let openSet = [{ node: start, f: 0, path: [start] }];
   let gScores = { [start]: 0 };
@@ -4296,13 +4284,6 @@ function findLongestPath(board, start, end) {
   return { path: maxPath, cost: maxWeight };
 }
 
-//
-// END A-STAR
-
-// NEAREST/FARTHEST
-//
-//
-
 function nearestFood(gameState, board, myHead, start){
   
   let foodNodes = [];
@@ -4334,7 +4315,7 @@ function nearestFood(gameState, board, myHead, start){
   } else if(possible.food != undefined){
       return safeFood[possible.food];
   } else {
-      console.log("No Food, Moving to Tail");
+      console.log("Moving to Tail");
       return aStar(board, getNodeId(myHead, gameState), getNodeId(gameState.you.body[gameState.you.body.length-1], gameState)).path[1];
   }
   
@@ -4403,12 +4384,10 @@ function findClosestOpening(gameState, board, headNode) {
       let connectionsArr = besideArr(futureTail, gameState);
 
       if(findLongestPath(board, headNode, connectionsArr[0]).path[1]) {
-          //console.log("1st path + " + { path: aStar(board, headNode, connectionsArr[0]).path, turns: turn }.path);
-          console.log("Taking path 1");
+          console.log("path 1");
           return { path: findLongestPath(board, headNode, connectionsArr[0]).path, turns: turn }; 
       } else if(findLongestPath(board, headNode, connectionsArr[1]).path[1]){
-          //console.log("2nd path + " + { path: aStar(board, headNode, connectionsArr[0]).path, turns: turn }.path);
-          console.log("Taking path 2");
+          console.log("path 2");
           return { path: findLongestPath(board, headNode, connectionsArr[1]).path, turns: turn }; 
       }
   }
@@ -4417,23 +4396,12 @@ function findClosestOpening(gameState, board, headNode) {
   return null;
 }
 
-//
-//
-// NEAREST/FARTHEST
-
-// TOOLS
-//
-//
-
-// IS OCCUPIED
 function isOccupied(node, gameState) {
   let snakeBodies = gameState.board.snakes.flatMap(snake => snake.body);
   snakeBodies = snakeBodies.map((part) => getNodeId(part, gameState));
-  //console.log(snakeBodies);
   return snakeBodies.includes(node);
 }
 
-// GET NODE ID
 function getNodeId(pos, gameState){
   if(pos.y < gameState.board.height && pos.x < gameState.board.width && pos.y >= 0 && pos.x >= 0){
       return pos.y*gameState.board.width + pos.x;
@@ -4442,7 +4410,6 @@ function getNodeId(pos, gameState){
   }
 }
 
-// FLOOD MAP TO CHOOSE BEST DIRECTION
 function flood(prevPath, headNode, board, gameState, myHead){
   let paths = [];
   for(let i = 0; i < board[headNode].connections.length; i++){
@@ -4461,10 +4428,8 @@ function flood(prevPath, headNode, board, gameState, myHead){
   }
 
   let findTail = aStar(board, headNode, getNodeId(gameState.you.body[gameState.you.body.length-1], gameState));
-  //console.log(findTail);
 
   if(findTail.path[1] && (!aStar(board, board[headNode].connections[paths[0].connection][0], board[headNode].connections[paths[paths.length-1].connection][0]).path[1] || board[headNode].connections[paths[0].connection][0] == board[headNode].connections[paths[paths.length-1].connection][0])){
-      //console.log("finding tail side " + findTail.path);
       return findTail.path[1];
   }
   
@@ -4483,7 +4448,6 @@ function flood(prevPath, headNode, board, gameState, myHead){
   return prevPath;
 }
 
-// BREADTH FIRST SEARCH FOR COUNTING SQUARES OR SEARCHING FOR TARGETS
 function bfs(graph, start, gameState = undefined, targets = undefined) {
   const visited = new Set();
   const queue = [start];
@@ -4514,7 +4478,6 @@ function bfs(graph, start, gameState = undefined, targets = undefined) {
   return c;
 }
 
-// BESIDE T/F
 function beside(posA, posB){
   if((Math.abs(posA.x - posB.x) < 2 && posA.y == posB.y) || (Math.abs(posA.y - posB.y) < 2 && posA.x == posB.x)){
       return true;
@@ -4523,7 +4486,6 @@ function beside(posA, posB){
   }
 }
 
-//FIND MOVE
 function calculateNextMove(path, board, headNode){
   if(board[path].position.x == board[headNode].position.x-1){
       return "left"
@@ -4538,7 +4500,3 @@ function calculateNextMove(path, board, headNode){
       return "up"
   }
 }
-
-//
-//
-// END TOOLS
